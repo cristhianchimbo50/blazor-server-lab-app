@@ -1,4 +1,4 @@
-# 📋 Sprint Planning - Proyecto Blazor Server
+# Sprint Planning - Proyecto Blazor Server
 
 | ID | Tarea | Estimación (Horas) | Sprint |
 |:---|:---|:---|:---|

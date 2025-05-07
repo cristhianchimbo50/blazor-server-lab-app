@@ -1,0 +1,154 @@
+﻿@page "/pacientes"
+@using LabWebAppBlazor.Models
+@using LabWebAppBlazor.Services
+@inject IApiService ApiService
+@inject IJSRuntime JS
+@rendermode InteractiveServer
+
+<h3>Gestión de Pacientes</h3>
+
+<EditForm Model="@PacienteActual"
+          OnValidSubmit="GuardarPaciente"
+          FormName="formCrearPaciente">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+
+    <div class="mb-3">
+        <label>Cédula</label>
+        <InputText class="form-control" @bind-Value="PacienteActual.CedulaPaciente" />
+    </div>
+
+    <div class="mb-3">
+        <label>Nombre</label>
+        <InputText class="form-control" @bind-Value="PacienteActual.NombrePaciente" />
+    </div>
+
+    <div class="mb-3">
+        <label>Fecha de Nacimiento</label>
+        <InputDate class="form-control" @bind-Value="PacienteActual.FechaNacPaciente" />
+    </div>
+
+    <div class="mb-3">
+        <label>Edad</label>
+        <InputNumber class="form-control" @bind-Value="PacienteActual.EdadPaciente" />
+    </div>
+
+    <div class="mb-3">
+        <label>Dirección</label>
+        <InputText class="form-control" @bind-Value="PacienteActual.DireccionPaciente" />
+    </div>
+
+    <div class="mb-3">
+        <label>Correo</label>
+        <InputText class="form-control" @bind-Value="PacienteActual.CorreoElectronicoPaciente" />
+    </div>
+
+    <div class="mb-3">
+        <label>Teléfono</label>
+        <InputText class="form-control" @bind-Value="PacienteActual.TelefonoPaciente" />
+    </div>
+
+    <div class="mb-3">
+        <label>ID Usuario</label>
+        <InputNumber class="form-control" @bind-Value="PacienteActual.IdUsuario" />
+    </div>
+
+    <button type="submit" class="btn btn-primary">Guardar</button>
+    <button type="button" class="btn btn-secondary" @onclick="Cancelar">Cancelar</button>
+</EditForm>
+
+<hr />
+
+@if (ListaPacientes is null)
+{
+    <p>Cargando pacientes...</p>
+}
+else
+{
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Cédula</th>
+                <th>Nombre</th>
+                <th>Correo</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var paciente in ListaPacientes)
+            {
+                <tr>
+                    <td>@paciente.CedulaPaciente</td>
+                    <td>@paciente.NombrePaciente</td>
+                    <td>@paciente.CorreoElectronicoPaciente</td>
+                    <td>
+                        <button class="btn btn-sm btn-warning" @onclick="() => EditarPaciente(paciente)">Editar</button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private List<PacienteDto> ListaPacientes = new();
+    private PacienteDto PacienteActual = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CargarPacientes();
+    }
+
+    private async Task CargarPacientes()
+    {
+        ListaPacientes = (await ApiService.GetPacientesAsync()).ToList();
+    }
+
+    private async Task GuardarPaciente()
+    {
+        PacienteActual.EdadPaciente = CalcularEdad(PacienteActual.FechaNacPaciente);
+        PacienteActual.FechaRegistro = DateTime.Now;
+        PacienteActual.Anulado = false;
+
+        var result = await ApiService.CrearPacienteAsync(PacienteActual);
+        if (result.IsSuccessStatusCode)
+        {
+            await JS.InvokeVoidAsync("alert", "Paciente guardado correctamente.");
+            await CargarPacientes();
+            PacienteActual = new PacienteDto();
+        }
+        else
+        {
+            await JS.InvokeVoidAsync("alert", $"Error al guardar: {result.StatusCode}");
+        }
+    }
+
+    private void EditarPaciente(PacienteDto paciente)
+    {
+        PacienteActual = new PacienteDto
+            {
+                IdPaciente = paciente.IdPaciente,
+                CedulaPaciente = paciente.CedulaPaciente,
+                NombrePaciente = paciente.NombrePaciente,
+                FechaNacPaciente = paciente.FechaNacPaciente,
+                EdadPaciente = paciente.EdadPaciente,
+                DireccionPaciente = paciente.DireccionPaciente,
+                CorreoElectronicoPaciente = paciente.CorreoElectronicoPaciente,
+                TelefonoPaciente = paciente.TelefonoPaciente,
+                IdUsuario = paciente.IdUsuario
+            };
+    }
+
+    private void Cancelar()
+    {
+        PacienteActual = new PacienteDto();
+    }
+
+    private int CalcularEdad(DateTime fechaNacimiento)
+    {
+        var hoy = DateTime.Today;
+        var edad = hoy.Year - fechaNacimiento.Year;
+        if (fechaNacimiento > hoy.AddYears(-edad)) edad--;
+        return edad;
+    }
+}

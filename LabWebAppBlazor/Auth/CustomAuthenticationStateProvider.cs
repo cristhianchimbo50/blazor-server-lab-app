@@ -23,12 +23,11 @@ public class CustomAuthenticationStateProvider : AuthenticationStateProvider
     {
         try
         {
-            // Evitar acceso a JS interop si estamos en prerender
             if (_jsRuntime is not IJSInProcessRuntime)
             {
-                Console.WriteLine("⚠Detenido: aún estamos en prerender. Evitando sessionStorage.");
-                return new AuthenticationState(_anonymous);
+                return new AuthenticationState(new ClaimsPrincipal(new ClaimsIdentity()));
             }
+
 
             var result = await _sessionStorage.GetAsync<LoginResponseDto>("authToken");
 

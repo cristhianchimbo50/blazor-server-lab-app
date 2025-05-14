@@ -1,7 +1,9 @@
 ﻿using LabWebAppBlazor.Components;
 using LabWebAppBlazor.Services;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage;
+
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -21,12 +23,10 @@ builder.Services.AddScoped<CustomAuthenticationStateProvider>();
 builder.Services.AddScoped<AuthenticationStateProvider>(sp =>
     sp.GetRequiredService<CustomAuthenticationStateProvider>());
 
-builder.Services.AddAuthentication(options =>
-{
-    options.DefaultScheme = "FakeScheme";
-});
 
 
+builder.Services.AddAuthentication("FakeScheme")
+    .AddScheme<AuthenticationSchemeOptions, FakeAuthHandler>("FakeScheme", options => { });
 
 builder.Services.AddAuthorization();
 
@@ -43,12 +43,11 @@ if (!app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 app.UseStaticFiles();
 app.UseAntiforgery();
-
-app.UseAuthentication(); // No obligatorio en Blazor Server si no usas Identity
+app.UseAuthentication();
 app.UseAuthorization();
 
-// Mapear componentes
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
+
 
 app.Run();

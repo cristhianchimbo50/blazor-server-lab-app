@@ -1,5 +1,8 @@
-﻿@page "/login"
-@rendermode InteractiveServer
+﻿@page "/"
+@page "/login"
+@using LabWebAppBlazor.Components.Layout
+
+@layout EmptyLayout
 
 @using System.Web
 @using System.Security.Claims
@@ -9,7 +12,7 @@
 @inject NavigationManager Navigation
 @inject AuthenticationStateProvider AuthProvider
 @inject IApiService ApiService
-
+@rendermode InteractiveServer
 <h3>Iniciar Sesión</h3>
 
 <EditForm Model="@loginModel" OnValidSubmit="HandleLogin" FormName="LoginForm">
@@ -76,7 +79,7 @@
 
             Console.WriteLine("El token coincide con la base de datos");
 
-            Navigation.NavigateTo(string.IsNullOrWhiteSpace(redirectUrl) ? "/" : redirectUrl!);
+            Navigation.NavigateTo(string.IsNullOrWhiteSpace(redirectUrl) ? "/" : redirectUrl!, forceLoad: true);
         }
     }
 }

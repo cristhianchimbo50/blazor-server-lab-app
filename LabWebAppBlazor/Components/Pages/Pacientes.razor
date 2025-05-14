@@ -1,15 +1,15 @@
-﻿@page "/pacientes"
-@using Microsoft.AspNetCore.Authorization
+﻿
+@page "/pacientes"
 @using Microsoft.AspNetCore.Components.Authorization
 @using LabWebAppBlazor.Models
 @using System.Security.Claims
 @using LabWebAppBlazor.Services
+
 @inject IApiService ApiService
 @inject IJSRuntime JS
 @inject AuthenticationStateProvider AuthProvider
 @inject NavigationManager Navigation
-@rendermode InteractiveServer //IMPORTANTEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
-
+@rendermode InteractiveServer
 
 <h3>Gestión de Pacientes</h3>
 
@@ -99,24 +99,25 @@ else
 @code {
     private List<PacienteDto> ListaPacientes = new();
     private PacienteDto PacienteActual = new();
+    private ClaimsPrincipal? user;
+    private bool showContent;
 
     protected override async Task OnInitializedAsync()
     {
         var authState = await AuthProvider.GetAuthenticationStateAsync();
-        var user = authState.User;
+        user = authState.User;
 
         if (!user.Identity?.IsAuthenticated ?? true)
         {
             var returnUrl = Navigation.ToBaseRelativePath(Navigation.Uri);
-            Navigation.NavigateTo($"/login?ReturnUrl={Uri.EscapeDataString(returnUrl)}");
+            Navigation.NavigateTo($"/login?ReturnUrl={Uri.EscapeDataString(returnUrl)}", forceLoad: true);
             return;
         }
 
-        Console.WriteLine($"🔐 Usuario autenticado: {user.Identity.Name}");
-        Console.WriteLine($"🔑 Rol(es): {string.Join(", ", user.Claims.Where(c => c.Type == ClaimTypes.Role).Select(c => c.Value))}");
-
-        await CargarPacientes();
+        showContent = true;
+        await CargarPacientes(); // Aquí puedes cargar si es válido
     }
+
 
     private async Task CargarPacientes()
     {
@@ -171,4 +172,3 @@ else
         return edad;
     }
 }
-

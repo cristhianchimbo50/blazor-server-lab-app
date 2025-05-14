@@ -1,0 +1,82 @@
+﻿@page "/login"
+@rendermode InteractiveServer
+
+@using System.Web
+@using System.Security.Claims
+@using LabWebAppBlazor.Models
+@using Microsoft.AspNetCore.Components.Authorization
+
+@inject NavigationManager Navigation
+@inject AuthenticationStateProvider AuthProvider
+@inject IApiService ApiService
+
+<h3>Iniciar Sesión</h3>
+
+<EditForm Model="@loginModel" OnValidSubmit="HandleLogin" FormName="LoginForm">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+
+    <div class="mb-3">
+        <label>Correo</label>
+        <InputText @bind-Value="loginModel.CorreoUsuario" class="form-control" />
+    </div>
+    <div class="mb-3">
+        <label>Contraseña</label>
+        <InputText @bind-Value="loginModel.Clave" type="password" class="form-control" />
+    </div>
+
+    <button class="btn btn-primary" type="submit">Ingresar</button>
+</EditForm>
+
+@if (!string.IsNullOrEmpty(error))
+{
+    <p class="text-danger">@error</p>
+}
+
+@code {
+    private LoginRequestDto loginModel = new();
+    private string? error;
+    private string? redirectUrl;
+
+    protected override void OnInitialized()
+    {
+        var uri = Navigation.ToAbsoluteUri(Navigation.Uri);
+        var query = HttpUtility.ParseQueryString(uri.Query);
+        redirectUrl = query["ReturnUrl"];
+    }
+
+    private async Task HandleLogin()
+    {
+        error = null;
+
+        var result = await ApiService.LoginAsync(loginModel);
+        Console.WriteLine("🔐 Token generado: " + result?.Token); // ⬅️ AQUI
+
+        if (result == null)
+        {
+            error = "Credenciales inválidas.";
+            return;
+        }
+
+        if (AuthProvider is CustomAuthenticationStateProvider customAuth)
+        {
+            await customAuth.SignInAsync(result);
+
+            var tokenValido = await ApiService.VerificarTokenAsync();
+
+            if (!tokenValido)
+            {
+                Console.WriteLine("El token no coincide con la base de datos");
+
+                // Opcional: cerrar sesión automáticamente
+                await customAuth.SignOutAsync();
+                error = "Token inválido o desactualizado. Contacte al administrador.";
+                return;
+            }
+
+            Console.WriteLine("El token coincide con la base de datos");
+
+            Navigation.NavigateTo(string.IsNullOrWhiteSpace(redirectUrl) ? "/" : redirectUrl!);
+        }
+    }
+}

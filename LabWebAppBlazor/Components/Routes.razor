@@ -1,6 +1,30 @@
-﻿<Router AppAssembly="typeof(Program).Assembly">
+﻿@using Microsoft.AspNetCore.Components.Authorization
+@inject AuthenticationStateProvider AuthProvider
+@inject NavigationManager Navigation
+
+<Router AppAssembly="@typeof(Program).Assembly">
     <Found Context="routeData">
-        <RouteView RouteData="routeData" DefaultLayout="typeof(Layout.MainLayout)" />
-        <FocusOnNavigate RouteData="routeData" Selector="h1" />
+        <RouteView RouteData="@routeData" DefaultLayout="typeof(Layout.MainLayout)" />
+        <FocusOnNavigate RouteData="@routeData" Selector="h1" />
     </Found>
 </Router>
+
+@code {
+    private bool redirected = false;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && !redirected)
+        {
+            redirected = true;
+
+            var uri = Navigation.ToBaseRelativePath(Navigation.Uri).ToLower();
+
+            // Si la URL es vacía o root, redirigir manualmente a /login
+            if (string.IsNullOrWhiteSpace(uri) || uri == "/")
+            {
+                Navigation.NavigateTo("/login", forceLoad: true);
+            }
+        }
+    }
+}

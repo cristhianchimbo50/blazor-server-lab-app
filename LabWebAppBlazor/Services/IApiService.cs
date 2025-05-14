@@ -6,5 +6,10 @@ namespace LabWebAppBlazor.Services
     {
         Task<IEnumerable<PacienteDto>> GetPacientesAsync();
         Task<HttpResponseMessage> CrearPacienteAsync(PacienteDto paciente);
+        Task<LoginResponseDto?> LoginAsync(LoginRequestDto request);
+
+        Task<bool> VerificarTokenAsync();
+
+
     }
 }

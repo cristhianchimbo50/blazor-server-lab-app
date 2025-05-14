@@ -1,11 +1,11 @@
 CREATE TABLE usuario (
   id_usuario INT IDENTITY(1,1) PRIMARY KEY,
   correo_usuario VARCHAR(100) UNIQUE NOT NULL,
-  clave_usuario VARCHAR(255) NOT NULL, -- Aquí guardamos el hash de la contraseña (temporal o permanente)
+  clave_usuario VARCHAR(255) NOT NULL,
   rol VARCHAR(20) CHECK (rol IN ('administrador', 'recepcionista', 'laboratorista')) NOT NULL,
   nombre NVARCHAR(255) NOT NULL,
-  es_contraseña_temporal BIT DEFAULT 1, -- Indica si la contraseña es temporal
-  estado_registro BIT DEFAULT 0 -- Indica si el usuario ha cambiado la contraseña temporal
+  es_contraseña_temporal BIT DEFAULT 1,
+  estado_registro BIT DEFAULT 0
 );
 
 CREATE TABLE medico (
@@ -94,14 +94,14 @@ CREATE TABLE pago (
 );
 
 CREATE TABLE resultado (
-    id_resultado INT IDENTITY(1,1) PRIMARY KEY,
-    numero_resultado NVARCHAR(50) NOT NULL,
-    id_paciente INT FOREIGN KEY REFERENCES paciente(id_paciente) ON DELETE NO ACTION,  
-    id_medico INT FOREIGN KEY REFERENCES medico(id_medico) ON DELETE NO ACTION,  
-    fecha_resultado DATETIME NOT NULL,
-    observaciones NVARCHAR(255),
-    id_orden INT FOREIGN KEY REFERENCES orden(id_orden) ON DELETE NO ACTION,  
-    anulado BIT DEFAULT 0
+  id_resultado INT IDENTITY(1,1) PRIMARY KEY,
+  numero_resultado NVARCHAR(50) NOT NULL,
+  id_paciente INT FOREIGN KEY REFERENCES paciente(id_paciente) ON DELETE NO ACTION,
+  id_medico INT FOREIGN KEY REFERENCES medico(id_medico) ON DELETE NO ACTION,
+  fecha_resultado DATETIME NOT NULL,
+  observaciones NVARCHAR(255),
+  id_orden INT FOREIGN KEY REFERENCES orden(id_orden) ON DELETE NO ACTION,
+  anulado BIT DEFAULT 0
 );
 
 CREATE TABLE detalle_pago (
@@ -116,7 +116,7 @@ CREATE TABLE detalle_pago (
 CREATE TABLE movimiento_reactivo (
   id_movimiento_reactivo INT IDENTITY(1,1) PRIMARY KEY,
   id_reactivo INT FOREIGN KEY REFERENCES reactivo(id_reactivo) ON DELETE CASCADE,
-  tipo_movimiento NVARCHAR(50), -- Tipo: 'ingreso', 'salida'
+  tipo_movimiento NVARCHAR(50),
   cantidad DECIMAL(10, 2),
   fecha_movimiento DATETIME NOT NULL,
   id_orden INT FOREIGN KEY REFERENCES orden(id_orden) ON DELETE CASCADE,
@@ -140,8 +140,20 @@ CREATE TABLE detalle_orden (
   id_resultado INT FOREIGN KEY REFERENCES resultado(id_resultado) ON DELETE CASCADE
 );
 
+CREATE TABLE detalle_resultado (
+  id_detalle_resultado INT IDENTITY(1,1) PRIMARY KEY,
+  id_resultado INT FOREIGN KEY REFERENCES resultado(id_resultado) ON DELETE CASCADE,
+  id_examen INT FOREIGN KEY REFERENCES examen(id_examen) ON DELETE CASCADE,
+  valor DECIMAL(10,2) NOT NULL,
+  unidad NVARCHAR(50),
+  observacion NVARCHAR(255),
+  anulado BIT DEFAULT 0
+);
+
 CREATE INDEX idx_usuario_correo ON usuario(correo_usuario);
 CREATE INDEX idx_orden_estado_pago ON orden(estado_pago);
 CREATE INDEX idx_paciente_nombre ON paciente(nombre_paciente);
 CREATE INDEX idx_pago_fecha ON pago(fecha_pago);
+CREATE INDEX idx_detalle_resultado_examen ON detalle_resultado(id_examen);
+
 

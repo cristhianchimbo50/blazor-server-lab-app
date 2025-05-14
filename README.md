@@ -12,7 +12,7 @@ Proyecto de desarrollo de una aplicación para la gestión de pacientes, órdene
 
 ## Estructura general
 - **Frontend:** Blazor Server
-- **Backend:** API REST en ASP.NET Core [Ver repositorio de la API](https://github.com/cristhianchimbo50/blazor-server-lab-api.git)
+- **Backend:** API REST en ASP.NET Core [Ver repositorio de la API](https://github.com/cristhianchimbo50/apirest-lab-app.git)
 - **Base de datos:** SQL Server local (desarrollo) y Azure SQL Database (producción)
 - **Despliegue:** Azure App Service + Dominio personalizado
 - **Automatización:** GitHub Actions para CI/CD

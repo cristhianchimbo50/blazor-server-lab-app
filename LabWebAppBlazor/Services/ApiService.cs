@@ -111,5 +111,43 @@ namespace LabWebAppBlazor.Services
             Console.WriteLine("✅ Token adjuntado correctamente.");
             return true;
         }
+
+        public async Task<HttpResponseMessage> RegistrarUsuarioAsync(CrearUsuarioDto nuevoUsuario)
+        {
+            var request = new HttpRequestMessage(HttpMethod.Post, "usuarios/registrar")
+            {
+                Content = JsonContent.Create(nuevoUsuario)
+            };
+
+            if (!await AttachTokenAsync(request))
+            {
+                Console.WriteLine("No se pudo adjuntar token para registrar usuario.");
+                return new HttpResponseMessage(System.Net.HttpStatusCode.Unauthorized);
+            }
+
+            var response = await _http.SendAsync(request);
+            var body = await response.Content.ReadAsStringAsync();
+            Console.WriteLine($"POST usuarios/registrar -> STATUS: {response.StatusCode}");
+            Console.WriteLine($"BODY: {body}");
+
+            return response;
+        }
+
+        public async Task<HttpResponseMessage> CambiarClaveAsync(CambiarClaveDto dto)
+        {
+            var request = new HttpRequestMessage(HttpMethod.Put, "usuarios/cambiar-clave")
+            {
+                Content = JsonContent.Create(dto)
+            };
+
+            if (!await AttachTokenAsync(request))
+                return new HttpResponseMessage(System.Net.HttpStatusCode.Unauthorized);
+
+            return await _http.SendAsync(request);
+        }
+
+
+
+
     }
 }

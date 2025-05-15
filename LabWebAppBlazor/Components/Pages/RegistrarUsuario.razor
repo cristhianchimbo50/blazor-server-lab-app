@@ -1,0 +1,97 @@
+﻿@page "/registrar-usuario"
+@rendermode InteractiveServer
+
+@using LabWebAppBlazor.Models
+@using System.Security.Claims
+@using Microsoft.AspNetCore.Components.Authorization
+@inject IApiService ApiService
+@inject IJSRuntime JS
+@inject AuthenticationStateProvider AuthProvider
+@inject NavigationManager Navigation
+
+<h3>Registrar Usuario</h3>
+
+@if (!isRendered)
+{
+    <p>Cargando interfaz...</p>
+}
+else if (!showContent)
+{
+    <p>No autorizado.</p>
+}
+else if (!user.IsInRole("administrador"))
+{
+    <p>No tienes permisos para acceder a esta sección.</p>
+}
+else
+{
+    <EditForm Model="@nuevoUsuario" OnValidSubmit="Registrar">
+        <DataAnnotationsValidator />
+        <ValidationSummary />
+
+        <div class="mb-3">
+            <label>Nombre</label>
+            <InputText class="form-control" @bind-Value="nuevoUsuario.Nombre" />
+        </div>
+
+        <div class="mb-3">
+            <label>Correo</label>
+            <InputText class="form-control" @bind-Value="nuevoUsuario.CorreoUsuario" />
+        </div>
+
+        <div class="mb-3">
+            <label>Rol</label>
+            <InputSelect class="form-control" @bind-Value="nuevoUsuario.Rol">
+                <option value="">-- Seleccione --</option>
+                <option value="administrador">Administrador</option>
+                <option value="recepcionista">Recepcionista</option>
+                <option value="laboratorista">Laboratorista</option>
+            </InputSelect>
+        </div>
+
+        <button type="submit" class="btn btn-success">Registrar</button>
+    </EditForm>
+}
+
+@code {
+    private CrearUsuarioDto nuevoUsuario = new();
+    private ClaimsPrincipal? user;
+    private bool isRendered = false;
+    private bool showContent = false;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            isRendered = true;
+
+            var authState = await AuthProvider.GetAuthenticationStateAsync();
+            user = authState.User;
+
+            if (!user.Identity?.IsAuthenticated ?? true)
+            {
+                var returnUrl = Navigation.ToBaseRelativePath(Navigation.Uri);
+                Navigation.NavigateTo($"/login?ReturnUrl={Uri.EscapeDataString(returnUrl)}", forceLoad: true);
+                return;
+            }
+
+            showContent = true;
+            StateHasChanged();
+        }
+    }
+
+    private async Task Registrar()
+    {
+        var response = await ApiService.RegistrarUsuarioAsync(nuevoUsuario);
+        if (response.IsSuccessStatusCode)
+        {
+            await JS.InvokeVoidAsync("alert", "Usuario registrado. Se generó una clave temporal.");
+            nuevoUsuario = new();
+        }
+        else
+        {
+            var msg = await response.Content.ReadAsStringAsync();
+            await JS.InvokeVoidAsync("alert", $"Error: {msg}");
+        }
+    }
+}

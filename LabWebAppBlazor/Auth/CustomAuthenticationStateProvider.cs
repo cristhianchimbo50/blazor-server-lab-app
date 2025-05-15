@@ -24,7 +24,7 @@ public class CustomAuthenticationStateProvider : AuthenticationStateProvider
     {
         if (_navigationManager.Uri.StartsWith("about:", StringComparison.OrdinalIgnoreCase))
         {
-            // En prerendering, devolver anónimo
+
             return new AuthenticationState(_anonymous);
         }
 
@@ -35,16 +35,16 @@ public class CustomAuthenticationStateProvider : AuthenticationStateProvider
 
             if (result.Success && result.Value != null)
             {
-                Console.WriteLine($"✅ Usuario autenticado desde sesión: {result.Value.Nombre}");
+                Console.WriteLine($"Usuario autenticado desde sesión: {result.Value.Nombre}");
                 var user = CreateClaimsPrincipal(result.Value);
                 return new AuthenticationState(user);
             }
 
-            Console.WriteLine("⚠️ Sesión no encontrada o inválida.");
+            Console.WriteLine("Sesión no encontrada o inválida.");
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"❌ Error recuperando sesión: {ex.Message}");
+            Console.WriteLine($"Error recuperando sesión: {ex.Message}");
         }
 
         return new AuthenticationState(_anonymous);
@@ -55,8 +55,8 @@ public class CustomAuthenticationStateProvider : AuthenticationStateProvider
 
         var user = CreateClaimsPrincipal(loginData);
 
-        Console.WriteLine($"👤 Usuario autenticado: {user.Identity?.Name}");
-        Console.WriteLine($"🛡️ Rol(es): {string.Join(", ", user.FindAll(ClaimTypes.Role).Select(c => c.Value))}");
+        Console.WriteLine($"Usuario autenticado: {user.Identity?.Name}");
+        Console.WriteLine($"Rol(es): {string.Join(", ", user.FindAll(ClaimTypes.Role).Select(c => c.Value))}");
 
         NotifyAuthenticationStateChanged(Task.FromResult(new AuthenticationState(user)));
     }

@@ -10,6 +10,11 @@ namespace LabWebAppBlazor.Services
 
         Task<bool> VerificarTokenAsync();
 
+        Task<HttpResponseMessage> RegistrarUsuarioAsync(CrearUsuarioDto nuevoUsuario);
+
+        Task<HttpResponseMessage> CambiarClaveAsync(CambiarClaveDto modelo);
+
+
 
     }
 }

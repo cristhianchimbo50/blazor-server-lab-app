@@ -75,7 +75,7 @@ else
         error = null;
 
         var result = await ApiService.LoginAsync(loginModel);
-        Console.WriteLine("🔐 Token generado: " + result?.Token);
+        Console.WriteLine("Token generado: " + result?.Token);
 
         if (result == null)
         {
@@ -86,7 +86,7 @@ else
         if (AuthProvider is CustomAuthenticationStateProvider customAuth)
         {
             await customAuth.SignInAsync(result);
-            Console.WriteLine("✅ Sesión guardada. Esperando confirmación...");
+            Console.WriteLine("Sesión guardada. Esperando confirmación...");
 
             // 🔁 FORZAR reautenticación para asegurar lectura inmediata del estado
             customAuth.ForceReauthentication();
@@ -99,18 +99,26 @@ else
 
             if (user.Identity?.IsAuthenticated ?? false)
             {
-                var redirect = string.IsNullOrEmpty(redirectUrl) ? "/pacientes" : redirectUrl!;
-                Navigation.NavigateTo(redirect, forceLoad: true);
+                if (result.EsContraseñaTemporal)
+                {
+                    Navigation.NavigateTo("/cambiar-contraseña", forceLoad: true);
+                }
+                else
+                {
+                    var redirect = string.IsNullOrEmpty(redirectUrl) ? "/pacientes" : redirectUrl!;
+                    Navigation.NavigateTo(redirect, forceLoad: true);
+                }
             }
+
             else
             {
-                Console.WriteLine("❌ Falló la autenticación después del login.");
+                Console.WriteLine("Falló la autenticación después del login.");
                 error = "Hubo un problema al autenticar. Intente de nuevo.";
             }
         }
         else
         {
-            Console.WriteLine("⚠️ Error al castear AuthProvider.");
+            Console.WriteLine("⚠Error al castear AuthProvider.");
         }
     }
 }

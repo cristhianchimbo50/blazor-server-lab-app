@@ -1,9 +1,10 @@
 ﻿@page "/"
 @page "/login"
-@using LabWebAppBlazor.Components.Layout
-
+@attribute [AllowAnonymous]
 @layout EmptyLayout
 
+
+@using LabWebAppBlazor.Components.Layout
 @using System.Web
 @using System.Security.Claims
 @using LabWebAppBlazor.Models
@@ -13,23 +14,31 @@
 @inject AuthenticationStateProvider AuthProvider
 @inject IApiService ApiService
 @rendermode InteractiveServer
+
 <h3>Iniciar Sesión</h3>
 
-<EditForm Model="@loginModel" OnValidSubmit="HandleLogin" FormName="LoginForm">
-    <DataAnnotationsValidator />
-    <ValidationSummary />
+@if (!isRendered)
+{
+    <p>Cargando interfaz...</p>
+}
+else
+{
+    <EditForm Model="@loginModel" OnValidSubmit="HandleLogin" FormName="LoginForm">
+        <DataAnnotationsValidator />
+        <ValidationSummary />
 
-    <div class="mb-3">
-        <label>Correo</label>
-        <InputText @bind-Value="loginModel.CorreoUsuario" class="form-control" />
-    </div>
-    <div class="mb-3">
-        <label>Contraseña</label>
-        <InputText @bind-Value="loginModel.Clave" type="password" class="form-control" />
-    </div>
+        <div class="mb-3">
+            <label>Correo</label>
+            <InputText @bind-Value="loginModel.CorreoUsuario" class="form-control" />
+        </div>
+        <div class="mb-3">
+            <label>Contraseña</label>
+            <InputText @bind-Value="loginModel.Clave" type="password" class="form-control" />
+        </div>
 
-    <button class="btn btn-primary" type="submit">Ingresar</button>
-</EditForm>
+        <button class="btn btn-primary" type="submit">Ingresar</button>
+    </EditForm>
+}
 
 @if (!string.IsNullOrEmpty(error))
 {
@@ -37,6 +46,7 @@
 }
 
 @code {
+    private bool isRendered = false;
     private LoginRequestDto loginModel = new();
     private string? error;
     private string? redirectUrl;
@@ -48,12 +58,24 @@
         redirectUrl = query["ReturnUrl"];
     }
 
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            isRendered = true;
+            StateHasChanged();
+        }
+    }
+
     private async Task HandleLogin()
     {
+        if (!isRendered)
+            return;
+
         error = null;
 
         var result = await ApiService.LoginAsync(loginModel);
-        Console.WriteLine("🔐 Token generado: " + result?.Token); // ⬅️ AQUI
+        Console.WriteLine("🔐 Token generado: " + result?.Token);
 
         if (result == null)
         {
@@ -64,22 +86,31 @@
         if (AuthProvider is CustomAuthenticationStateProvider customAuth)
         {
             await customAuth.SignInAsync(result);
+            Console.WriteLine("✅ Sesión guardada. Esperando confirmación...");
 
-            var tokenValido = await ApiService.VerificarTokenAsync();
+            // 🔁 FORZAR reautenticación para asegurar lectura inmediata del estado
+            customAuth.ForceReauthentication();
 
-            if (!tokenValido)
+            // ⏳ Espera a que Blazor actualice internamente el estado (sí, es necesario)
+            await Task.Delay(1000);
+
+            var authState = await AuthProvider.GetAuthenticationStateAsync();
+            var user = authState.User;
+
+            if (user.Identity?.IsAuthenticated ?? false)
             {
-                Console.WriteLine("El token no coincide con la base de datos");
-
-                // Opcional: cerrar sesión automáticamente
-                await customAuth.SignOutAsync();
-                error = "Token inválido o desactualizado. Contacte al administrador.";
-                return;
+                var redirect = string.IsNullOrEmpty(redirectUrl) ? "/pacientes" : redirectUrl!;
+                Navigation.NavigateTo(redirect, forceLoad: true);
             }
-
-            Console.WriteLine("El token coincide con la base de datos");
-
-            Navigation.NavigateTo(string.IsNullOrWhiteSpace(redirectUrl) ? "/" : redirectUrl!, forceLoad: true);
+            else
+            {
+                Console.WriteLine("❌ Falló la autenticación después del login.");
+                error = "Hubo un problema al autenticar. Intente de nuevo.";
+            }
+        }
+        else
+        {
+            Console.WriteLine("⚠️ Error al castear AuthProvider.");
         }
     }
 }

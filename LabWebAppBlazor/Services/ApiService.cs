@@ -1,6 +1,7 @@
 ﻿using System.Net.Http.Json;
 using LabWebAppBlazor.Models;
 using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage;
+using System.Net.Http.Headers;
 
 namespace LabWebAppBlazor.Services
 {
@@ -9,25 +10,57 @@ namespace LabWebAppBlazor.Services
         private readonly HttpClient _http;
         private readonly ProtectedSessionStorage _sessionStorage;
 
-        public ApiService(HttpClient http, ProtectedSessionStorage sessionStorage)
+        public ApiService(IHttpClientFactory factory, ProtectedSessionStorage sessionStorage)
         {
-            _http = http;
+            _http = factory.CreateClient("Api");
             _sessionStorage = sessionStorage;
         }
 
         public async Task<IEnumerable<PacienteDto>> GetPacientesAsync()
         {
-            await AddJwtTokenAsync();
-            return await _http.GetFromJsonAsync<IEnumerable<PacienteDto>>("pacientes");
-        }
+            var request = new HttpRequestMessage(HttpMethod.Get, "pacientes");
 
+            if (!await AttachTokenAsync(request))
+            {
+                Console.WriteLine("⚠️ No se pudo agregar el token. Abandonando llamada.");
+                return Enumerable.Empty<PacienteDto>();
+            }
+
+            Console.WriteLine("📡 GET /pacientes con token");
+            Console.WriteLine("🔐 Header Authorization: " + request.Headers.Authorization);
+
+            var response = await _http.SendAsync(request);
+            Console.WriteLine($"📬 Código respuesta: {(int)response.StatusCode} {response.StatusCode}");
+
+            if (!response.IsSuccessStatusCode)
+            {
+                var body = await response.Content.ReadAsStringAsync();
+                Console.WriteLine("❌ Cuerpo de error: " + body);
+                return Enumerable.Empty<PacienteDto>();
+            }
+
+            return await response.Content.ReadFromJsonAsync<IEnumerable<PacienteDto>>() ?? [];
+        }
 
         public async Task<HttpResponseMessage> CrearPacienteAsync(PacienteDto paciente)
         {
-            var response = await _http.PostAsJsonAsync("pacientes", paciente);
+            var request = new HttpRequestMessage(HttpMethod.Post, "pacientes")
+            {
+                Content = JsonContent.Create(paciente)
+            };
+
+            if (!await AttachTokenAsync(request))
+            {
+                Console.WriteLine("⚠️ No se pudo agregar token en POST.");
+                return new HttpResponseMessage(System.Net.HttpStatusCode.Unauthorized);
+            }
+
+            var response = await _http.SendAsync(request);
             var content = await response.Content.ReadAsStringAsync();
-            Console.WriteLine($"STATUS: {response.StatusCode}");
-            Console.WriteLine($"BODY: {content}");
+
+            Console.WriteLine($"📤 POST pacientes -> STATUS: {response.StatusCode}");
+            Console.WriteLine($"📤 BODY: {content}");
+
             return response;
         }
 
@@ -38,33 +71,45 @@ namespace LabWebAppBlazor.Services
             if (!response.IsSuccessStatusCode)
             {
                 var error = await response.Content.ReadAsStringAsync();
-                Console.WriteLine($"Login fallido: {error}");
+                Console.WriteLine($"❌ Login fallido: {error}");
                 return null;
             }
 
             return await response.Content.ReadFromJsonAsync<LoginResponseDto>();
         }
 
-        private async Task AddJwtTokenAsync()
-        {
-            var tokenResult = await _sessionStorage.GetAsync<LoginResponseDto>("authToken");
-
-            if (tokenResult.Success && tokenResult.Value is not null)
-            {
-                Console.WriteLine("Authorization header actual: " + _http.DefaultRequestHeaders.Authorization);
-
-                _http.DefaultRequestHeaders.Authorization =
-                    new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", tokenResult.Value.Token);
-            }
-        }
-
-
         public async Task<bool> VerificarTokenAsync()
         {
-            await AddJwtTokenAsync();
-            var response = await _http.GetAsync("usuarios/verificar-token");
+            var request = new HttpRequestMessage(HttpMethod.Get, "usuarios/verificar-token");
+
+            if (!await AttachTokenAsync(request))
+            {
+                Console.WriteLine("⚠️ Token no válido para verificar.");
+                return false;
+            }
+
+            var response = await _http.SendAsync(request);
+            Console.WriteLine($"🔍 Verificando token -> {response.StatusCode}");
             return response.IsSuccessStatusCode;
         }
 
+        /// <summary>
+        /// Adjunta el token JWT si está disponible. Devuelve false si no lo está.
+        /// </summary>
+        private async Task<bool> AttachTokenAsync(HttpRequestMessage request)
+        {
+            var tokenResult = await _sessionStorage.GetAsync<LoginResponseDto>("authToken");
+
+            if (!tokenResult.Success || tokenResult.Value == null || string.IsNullOrWhiteSpace(tokenResult.Value.Token))
+            {
+                Console.WriteLine("❌ Token inválido o ausente en sesión.");
+                return false;
+            }
+
+            var token = tokenResult.Value.Token;
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+            Console.WriteLine("✅ Token adjuntado correctamente.");
+            return true;
+        }
     }
 }

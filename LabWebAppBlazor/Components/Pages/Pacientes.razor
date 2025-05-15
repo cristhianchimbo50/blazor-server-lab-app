@@ -1,5 +1,6 @@
-﻿
-@page "/pacientes"
+﻿@page "/pacientes"
+@* @attribute [Authorize] *@
+@rendermode InteractiveServer
 @using Microsoft.AspNetCore.Components.Authorization
 @using LabWebAppBlazor.Models
 @using System.Security.Claims
@@ -9,116 +10,137 @@
 @inject IJSRuntime JS
 @inject AuthenticationStateProvider AuthProvider
 @inject NavigationManager Navigation
-@rendermode InteractiveServer
 
-<h3>Gestión de Pacientes</h3>
 
-<EditForm Model="@PacienteActual"
-          OnValidSubmit="GuardarPaciente"
-          FormName="formCrearPaciente">
-    <DataAnnotationsValidator />
-    <ValidationSummary />
-
-    <div class="mb-3">
-        <label>Cédula</label>
-        <InputText class="form-control" @bind-Value="PacienteActual.CedulaPaciente" />
-    </div>
-
-    <div class="mb-3">
-        <label>Nombre</label>
-        <InputText class="form-control" @bind-Value="PacienteActual.NombrePaciente" />
-    </div>
-
-    <div class="mb-3">
-        <label>Fecha de Nacimiento</label>
-        <InputDate class="form-control" @bind-Value="PacienteActual.FechaNacPaciente" />
-    </div>
-
-    <div class="mb-3">
-        <label>Edad</label>
-        <InputNumber class="form-control" @bind-Value="PacienteActual.EdadPaciente" />
-    </div>
-
-    <div class="mb-3">
-        <label>Dirección</label>
-        <InputText class="form-control" @bind-Value="PacienteActual.DireccionPaciente" />
-    </div>
-
-    <div class="mb-3">
-        <label>Correo</label>
-        <InputText class="form-control" @bind-Value="PacienteActual.CorreoElectronicoPaciente" />
-    </div>
-
-    <div class="mb-3">
-        <label>Teléfono</label>
-        <InputText class="form-control" @bind-Value="PacienteActual.TelefonoPaciente" />
-    </div>
-
-    <div class="mb-3">
-        <label>ID Usuario</label>
-        <InputNumber class="form-control" @bind-Value="PacienteActual.IdUsuario" />
-    </div>
-
-    <button type="submit" class="btn btn-primary">Guardar</button>
-    <button type="button" class="btn btn-secondary" @onclick="Cancelar">Cancelar</button>
-</EditForm>
 
 <hr />
 
-@if (ListaPacientes is null)
+<h3>Gestión de Pacientes</h3>
+
+@if (!isRendered)
 {
-    <p>Cargando pacientes...</p>
+    <p>Cargando interfaz...</p>
+}
+else if (!showContent)
+{
+    <p>No autorizado.</p>
 }
 else
 {
-    <table class="table table-striped">
-        <thead>
-            <tr>
-                <th>Cédula</th>
-                <th>Nombre</th>
-                <th>Correo</th>
-                <th>Acciones</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var paciente in ListaPacientes)
-            {
+    <EditForm Model="@PacienteActual"
+              OnValidSubmit="GuardarPaciente"
+              FormName="formCrearPaciente">
+        <DataAnnotationsValidator />
+        <ValidationSummary />
+
+        <div class="mb-3">
+            <label>Cédula</label>
+            <InputText class="form-control" @bind-Value="PacienteActual.CedulaPaciente" />
+        </div>
+
+        <div class="mb-3">
+            <label>Nombre</label>
+            <InputText class="form-control" @bind-Value="PacienteActual.NombrePaciente" />
+        </div>
+
+        <div class="mb-3">
+            <label>Fecha de Nacimiento</label>
+            <InputDate class="form-control" @bind-Value="PacienteActual.FechaNacPaciente" />
+        </div>
+
+        <div class="mb-3">
+            <label>Edad</label>
+            <InputNumber class="form-control" @bind-Value="PacienteActual.EdadPaciente" />
+        </div>
+
+        <div class="mb-3">
+            <label>Dirección</label>
+            <InputText class="form-control" @bind-Value="PacienteActual.DireccionPaciente" />
+        </div>
+
+        <div class="mb-3">
+            <label>Correo</label>
+            <InputText class="form-control" @bind-Value="PacienteActual.CorreoElectronicoPaciente" />
+        </div>
+
+        <div class="mb-3">
+            <label>Teléfono</label>
+            <InputText class="form-control" @bind-Value="PacienteActual.TelefonoPaciente" />
+        </div>
+
+        <div class="mb-3">
+            <label>ID Usuario</label>
+            <InputNumber class="form-control" @bind-Value="PacienteActual.IdUsuario" />
+        </div>
+
+        <button type="submit" class="btn btn-primary">Guardar</button>
+        <button type="button" class="btn btn-secondary" @onclick="Cancelar">Cancelar</button>
+    </EditForm>
+
+    <hr />
+
+    @if (ListaPacientes is null)
+    {
+        <p>Cargando pacientes...</p>
+    }
+    else
+    {
+        <table class="table table-striped">
+            <thead>
                 <tr>
-                    <td>@paciente.CedulaPaciente</td>
-                    <td>@paciente.NombrePaciente</td>
-                    <td>@paciente.CorreoElectronicoPaciente</td>
-                    <td>
-                        <button class="btn btn-sm btn-warning" @onclick="() => EditarPaciente(paciente)">Editar</button>
-                    </td>
+                    <th>Cédula</th>
+                    <th>Nombre</th>
+                    <th>Correo</th>
+                    <th>Acciones</th>
                 </tr>
-            }
-        </tbody>
-    </table>
+            </thead>
+            <tbody>
+                @foreach (var paciente in ListaPacientes)
+                {
+                    <tr>
+                        <td>@paciente.CedulaPaciente</td>
+                        <td>@paciente.NombrePaciente</td>
+                        <td>@paciente.CorreoElectronicoPaciente</td>
+                        <td>
+                            <button class="btn btn-sm btn-warning" @onclick="() => EditarPaciente(paciente)">Editar</button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
 }
 
 @code {
+    private bool isRendered = false;
+    private bool showContent = false;
     private List<PacienteDto> ListaPacientes = new();
     private PacienteDto PacienteActual = new();
     private ClaimsPrincipal? user;
-    private bool showContent;
 
-    protected override async Task OnInitializedAsync()
+    protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        var authState = await AuthProvider.GetAuthenticationStateAsync();
-        user = authState.User;
-
-        if (!user.Identity?.IsAuthenticated ?? true)
+        if (firstRender)
         {
-            var returnUrl = Navigation.ToBaseRelativePath(Navigation.Uri);
-            Navigation.NavigateTo($"/login?ReturnUrl={Uri.EscapeDataString(returnUrl)}", forceLoad: true);
-            return;
+            isRendered = true;
+
+            var authState = await AuthProvider.GetAuthenticationStateAsync();
+            user = authState.User;
+
+            if (!user.Identity?.IsAuthenticated ?? true)
+            {
+                var returnUrl = Navigation.ToBaseRelativePath(Navigation.Uri);
+                Navigation.NavigateTo($"/login?ReturnUrl={Uri.EscapeDataString(returnUrl)}", forceLoad: true);
+                return;
+            }
+
+            showContent = true;
+            await CargarPacientes();
+
+            StateHasChanged();
         }
-
-        showContent = true;
-        await CargarPacientes(); // Aquí puedes cargar si es válido
     }
-
-
+   
     private async Task CargarPacientes()
     {
         ListaPacientes = (await ApiService.GetPacientesAsync()).ToList();

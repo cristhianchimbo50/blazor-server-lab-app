@@ -4,20 +4,19 @@ using Microsoft.Extensions.Options;
 using System.Security.Claims;
 using System.Text.Encodings.Web;
 
-public class FakeAuthHandler : AuthenticationHandler<AuthenticationSchemeOptions>
+public class DummyAuthHandler : AuthenticationHandler<AuthenticationSchemeOptions>
 {
-    public FakeAuthHandler(
+    public DummyAuthHandler(
         IOptionsMonitor<AuthenticationSchemeOptions> options,
         ILoggerFactory logger,
         UrlEncoder encoder,
         ISystemClock clock)
         : base(options, logger, encoder, clock)
-    {
-    }
+    { }
 
     protected override Task<AuthenticateResult> HandleAuthenticateAsync()
     {
-        // No autentica a nadie. Solo satisface el requisito del middleware.
+        // No autentica a nadie, es solo para evitar excepciones internas
         return Task.FromResult(AuthenticateResult.NoResult());
     }
 }

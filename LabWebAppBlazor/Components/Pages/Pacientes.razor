@@ -116,7 +116,8 @@ else
                                    Value="@PacienteActual.CedulaPaciente"
                                    ValueChanged="(v) => PacienteActual.CedulaPaciente = FiltrarSoloNumeros(v)"
                                    ValueExpression="() => PacienteActual.CedulaPaciente"
-                                   disabled="@(!EsAdmin)" />
+                                   disabled="@(!EsAdmin && PacienteActual.IdPaciente != 0)" />
+
 
                     </div>
 
@@ -131,7 +132,8 @@ else
                     <div class="mb-3">
                         <label>Fecha de Nacimiento</label>
                         <InputDate class="form-control" @bind-Value="PacienteActual.FechaNacPaciente"
-                                   disabled="@(!EsAdmin)" />
+                                   disabled="@(!EsAdmin && PacienteActual.IdPaciente != 0)" />
+
                     </div>
 
                     <div class="mb-3">

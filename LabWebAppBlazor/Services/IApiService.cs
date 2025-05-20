@@ -23,5 +23,8 @@ namespace LabWebAppBlazor.Services
         //Orden
         Task<IEnumerable<OrdenDto>> GetOrdenesAsync();
 
+        Task<PacienteDto?> ObtenerPacientePorCedulaAsync(string cedula);
+
+
     }
 }

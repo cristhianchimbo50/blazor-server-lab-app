@@ -36,9 +36,11 @@ else
             <label>Valor</label>
             <InputText class="form-control" @bind-Value="valorBusqueda" />
         </div>
-        <div class="col-md-4 mt-4">
+        <div class="col-md-4 mt-4 d-flex gap-2">
             <button class="btn btn-primary" @onclick="BuscarOrdenes">Buscar</button>
+            <button class="btn btn-success" @onclick="IrAIngresarOrden">Ingresar Orden</button>
         </div>
+
     </div>
 
     @if (ListaOrdenes == null || ListaOrdenes.Count == 0)
@@ -138,4 +140,10 @@ else
             };
         }
     }
+
+    private void IrAIngresarOrden()
+    {
+        Navigation.NavigateTo("/ordenes/nuevo", forceLoad: true);
+    }
+
 }

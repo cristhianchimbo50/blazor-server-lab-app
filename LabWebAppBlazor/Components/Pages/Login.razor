@@ -100,7 +100,7 @@
                 }
                 else
                 {
-                    var redirect = string.IsNullOrEmpty(redirectUrl) ? "/pacientes" : redirectUrl!;
+                    var redirect = string.IsNullOrEmpty(redirectUrl) ? "/home" : redirectUrl!;
                     Navigation.NavigateTo(redirect, forceLoad: true);
                 }
             }

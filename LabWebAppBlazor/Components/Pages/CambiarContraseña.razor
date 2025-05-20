@@ -54,7 +54,7 @@
         if (resultado.IsSuccessStatusCode)
         {
             await JS.InvokeVoidAsync("alert", "Contraseña actualizada.");
-            Navigation.NavigateTo("/pacientes", forceLoad: true);
+            Navigation.NavigateTo("/home", forceLoad: true);
         }
         else
         {

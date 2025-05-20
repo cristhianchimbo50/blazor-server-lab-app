@@ -188,6 +188,23 @@ namespace LabWebAppBlazor.Services
             return await response.Content.ReadFromJsonAsync<IEnumerable<OrdenDto>>() ?? [];
         }
 
+        //buscar paciente por cedula
+        public async Task<PacienteDto?> ObtenerPacientePorCedulaAsync(string cedula)
+        {
+            var request = new HttpRequestMessage(HttpMethod.Get, $"pacientes/buscar?campo=cedula&valor={cedula}");
+
+            if (!await AttachTokenAsync(request))
+                return null;
+
+            var response = await _http.SendAsync(request);
+            if (!response.IsSuccessStatusCode)
+                return null;
+
+            var lista = await response.Content.ReadFromJsonAsync<List<PacienteDto>>();
+            return lista?.FirstOrDefault();
+        }
+
+
 
     }
 }

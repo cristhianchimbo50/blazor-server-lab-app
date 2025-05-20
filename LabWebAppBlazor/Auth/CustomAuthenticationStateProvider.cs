@@ -63,9 +63,10 @@ public class CustomAuthenticationStateProvider : AuthenticationStateProvider
 
     public async Task SignOutAsync()
     {
-        await _sessionStorage.DeleteAsync(SessionKey);
-        NotifyAuthenticationStateChanged(Task.FromResult(new AuthenticationState(_anonymous)));
+        await _sessionStorage.DeleteAsync("authToken");
+        NotifyAuthenticationStateChanged(Task.FromResult(new AuthenticationState(new ClaimsPrincipal(new ClaimsIdentity()))));
     }
+
 
     public void ForceReauthentication()
     {
@@ -83,4 +84,6 @@ public class CustomAuthenticationStateProvider : AuthenticationStateProvider
         var identity = new ClaimsIdentity(claims, "AppAuth");
         return new ClaimsPrincipal(identity);
     }
+
+
 }

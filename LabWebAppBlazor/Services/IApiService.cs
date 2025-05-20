@@ -20,5 +20,8 @@ namespace LabWebAppBlazor.Services
 
         Task<HttpResponseMessage> EditarPacienteAsync(int id, PacienteDto paciente);
 
+        //Orden
+        Task<IEnumerable<OrdenDto>> GetOrdenesAsync();
+
     }
 }

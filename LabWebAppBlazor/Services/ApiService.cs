@@ -173,6 +173,20 @@ namespace LabWebAppBlazor.Services
             return await _http.SendAsync(request);
         }
 
+        //Orden
+        public async Task<IEnumerable<OrdenDto>> GetOrdenesAsync()
+        {
+            var request = new HttpRequestMessage(HttpMethod.Get, "ordenes");
+
+            if (!await AttachTokenAsync(request))
+                return Enumerable.Empty<OrdenDto>();
+
+            var response = await _http.SendAsync(request);
+            if (!response.IsSuccessStatusCode)
+                return Enumerable.Empty<OrdenDto>();
+
+            return await response.Content.ReadFromJsonAsync<IEnumerable<OrdenDto>>() ?? [];
+        }
 
 
     }

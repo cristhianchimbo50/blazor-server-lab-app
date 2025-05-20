@@ -1,0 +1,141 @@
+﻿@page "/ordenes"
+@rendermode InteractiveServer
+@using LabWebAppBlazor.Models
+@using LabWebAppBlazor.Services
+@using Microsoft.AspNetCore.Components.Authorization
+@using System.Security.Claims;
+@inject IApiService ApiService
+@inject AuthenticationStateProvider AuthProvider
+@inject NavigationManager Navigation
+
+
+<h3>Gestión de Órdenes</h3>
+
+@if (!isRendered)
+{
+    <p>Cargando interfaz...</p>
+}
+else if (!showContent)
+{
+    <p>No autorizado.</p>
+}
+else
+{
+    <div class="row mb-3">
+        <div class="col-md-3">
+            <label>Buscar por</label>
+            <InputSelect class="form-control" @bind-Value="criterioBusqueda">
+                <option value="">-- Seleccione --</option>
+                <option value="numero">Número de Orden</option>
+                <option value="cedula">Cédula</option>
+                <option value="nombre">Nombre</option>
+                <option value="estadoPago">Estado de Pago</option>
+            </InputSelect>
+        </div>
+        <div class="col-md-5">
+            <label>Valor</label>
+            <InputText class="form-control" @bind-Value="valorBusqueda" />
+        </div>
+        <div class="col-md-4 mt-4">
+            <button class="btn btn-primary" @onclick="BuscarOrdenes">Buscar</button>
+        </div>
+    </div>
+
+    @if (ListaOrdenes == null || ListaOrdenes.Count == 0)
+    {
+        <p>No se encontraron órdenes.</p>
+    }
+    else
+    {
+        <table class="table table-bordered table-striped">
+            <thead class="table-light">
+                <tr>
+                    <th>Número</th>
+                    <th>Cédula</th>
+                    <th>Nombre</th>
+                    <th>Fecha</th>
+                    <th>Total</th>
+                    <th>Pagado</th>
+                    <th>Saldo</th>
+                    <th>Estado Pago</th>
+                    <th>Estado</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var orden in ListaOrdenes)
+                {
+                    <tr>
+                        <td>@orden.NumeroOrden</td>
+                        <td>@orden.CedulaPaciente</td>
+                        <td>@orden.NombrePaciente</td>
+                        <td>@orden.FechaOrden.ToShortDateString()</td>
+                        <td>@orden.Total.ToString("C")</td>
+                        <td>@orden.TotalPagado.ToString("C")</td>
+                        <td>@orden.SaldoPendiente.ToString("C")</td>
+                        <td>@orden.EstadoPago</td>
+                        <td>@(orden.Anulado ? "Anulado" : "Activo")</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+}
+
+@code {
+    private List<OrdenDto> ListaOrdenes = new();
+    private string criterioBusqueda = "";
+    private string valorBusqueda = "";
+
+    private bool isRendered = false;
+    private bool showContent = false;
+    private ClaimsPrincipal? user;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            isRendered = true;
+
+            var authState = await AuthProvider.GetAuthenticationStateAsync();
+            user = authState.User;
+
+            if (!user.Identity?.IsAuthenticated ?? true)
+            {
+                Navigation.NavigateTo("/login", true);
+                return;
+            }
+
+            showContent = true;
+            await CargarOrdenes();
+            StateHasChanged();
+        }
+    }
+
+    private async Task CargarOrdenes()
+    {
+        ListaOrdenes = (await ApiService.GetOrdenesAsync()).ToList();
+    }
+
+    private async Task BuscarOrdenes()
+    {
+        var todas = (await ApiService.GetOrdenesAsync()).ToList();
+
+        if (string.IsNullOrWhiteSpace(criterioBusqueda) || string.IsNullOrWhiteSpace(valorBusqueda))
+        {
+            ListaOrdenes = todas;
+        }
+        else
+        {
+            var val = valorBusqueda.ToLower();
+
+            ListaOrdenes = criterioBusqueda switch
+            {
+                "numero" => todas.Where(o => o.NumeroOrden.ToLower().Contains(val)).ToList(),
+                "cedula" => todas.Where(o => o.CedulaPaciente.ToLower().Contains(val)).ToList(),
+                "nombre" => todas.Where(o => o.NombrePaciente.ToLower().Contains(val)).ToList(),
+                "estadoPago" => todas.Where(o => o.EstadoPago.ToLower().Contains(val)).ToList(),
+                _ => []
+            };
+        }
+    }
+}

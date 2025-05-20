@@ -1,5 +1,4 @@
 ﻿@page "/pacientes"
-
 @rendermode InteractiveServer
 @using Microsoft.AspNetCore.Components.Authorization
 @using LabWebAppBlazor.Models
@@ -10,10 +9,6 @@
 @inject IJSRuntime JS
 @inject AuthenticationStateProvider AuthProvider
 @inject NavigationManager Navigation
-
-
-
-<hr />
 
 <h3>Gestión de Pacientes</h3>
 
@@ -27,61 +22,32 @@ else if (!showContent)
 }
 else
 {
-    <EditForm Model="@PacienteActual"
-              OnValidSubmit="GuardarPaciente"
-              FormName="formCrearPaciente">
-        <DataAnnotationsValidator />
-        <ValidationSummary />
-
-        <div class="mb-3">
-            <label>Cédula</label>
-            <InputText class="form-control" @bind-Value="PacienteActual.CedulaPaciente" />
+    <div class="mb-3 row">
+        <div class="col-md-3">
+            <label>Buscar por</label>
+            <InputSelect class="form-control" @bind-Value="criterioBusqueda">
+                <option value="">-- Seleccione --</option>
+                <option value="cedula">Cédula</option>
+                <option value="nombre">Nombre</option>
+                <option value="edad">Edad</option>
+                <option value="direccion">Dirección</option>
+                <option value="correo">Correo</option>
+                <option value="telefono">Teléfono</option>
+            </InputSelect>
         </div>
-
-        <div class="mb-3">
-            <label>Nombre</label>
-            <InputText class="form-control" @bind-Value="PacienteActual.NombrePaciente" />
+        <div class="col-md-5">
+            <label>Valor</label>
+            <InputText class="form-control" @bind-Value="valorBusqueda" />
         </div>
-
-        <div class="mb-3">
-            <label>Fecha de Nacimiento</label>
-            <InputDate class="form-control" @bind-Value="PacienteActual.FechaNacPaciente" />
+        <div class="col-md-4 mt-4">
+            <button class="btn btn-primary" @onclick="BuscarPacientes">Buscar</button>
+            <button class="btn btn-success ms-2" @onclick="MostrarModal">Agregar Paciente</button>
         </div>
+    </div>
 
-        <div class="mb-3">
-            <label>Edad</label>
-            <InputNumber class="form-control" @bind-Value="PacienteActual.EdadPaciente" />
-        </div>
-
-        <div class="mb-3">
-            <label>Dirección</label>
-            <InputText class="form-control" @bind-Value="PacienteActual.DireccionPaciente" />
-        </div>
-
-        <div class="mb-3">
-            <label>Correo</label>
-            <InputText class="form-control" @bind-Value="PacienteActual.CorreoElectronicoPaciente" />
-        </div>
-
-        <div class="mb-3">
-            <label>Teléfono</label>
-            <InputText class="form-control" @bind-Value="PacienteActual.TelefonoPaciente" />
-        </div>
-
-        <div class="mb-3">
-            <label>ID Usuario</label>
-            <InputNumber class="form-control" @bind-Value="PacienteActual.IdUsuario" />
-        </div>
-
-        <button type="submit" class="btn btn-primary">Guardar</button>
-        <button type="button" class="btn btn-secondary" @onclick="Cancelar">Cancelar</button>
-    </EditForm>
-
-    <hr />
-
-    @if (ListaPacientes is null)
+    @if (ListaPacientes == null || ListaPacientes.Count == 0)
     {
-        <p>Cargando pacientes...</p>
+        <p>No se encontraron pacientes.</p>
     }
     else
     {
@@ -90,7 +56,11 @@ else
                 <tr>
                     <th>Cédula</th>
                     <th>Nombre</th>
+                    <th>Edad</th>
+                    <th>Dirección</th>
                     <th>Correo</th>
+                    <th>Teléfono</th>
+                    <th>Estado</th>
                     <th>Acciones</th>
                 </tr>
             </thead>
@@ -100,9 +70,25 @@ else
                     <tr>
                         <td>@paciente.CedulaPaciente</td>
                         <td>@paciente.NombrePaciente</td>
+                        <td>@paciente.EdadPaciente</td>
+                        <td>@paciente.DireccionPaciente</td>
                         <td>@paciente.CorreoElectronicoPaciente</td>
+                        <td>@paciente.TelefonoPaciente</td>
+                        <td>@(paciente.Anulado == true ? "Anulado" : "Activo")</td>
                         <td>
-                            <button class="btn btn-sm btn-warning" @onclick="() => EditarPaciente(paciente)">Editar</button>
+                            @if (!(paciente.Anulado ?? false))
+                            {
+                                <button class="btn btn-sm btn-warning me-2" @onclick="() => EditarPaciente(paciente)">Editar</button>
+
+                                @if (user?.IsInRole("administrador") == true)
+                                {
+                                    <button class="btn btn-sm btn-danger" @onclick="() => ConfirmarAnulacion(paciente.IdPaciente)">Anular</button>
+                                }
+                            }
+                            else
+                            {
+                                <span class="text-muted">Sin acciones</span>
+                            }
                         </td>
                     </tr>
                 }
@@ -111,12 +97,85 @@ else
     }
 }
 
+<!-- Modal -->
+<div class="modal fade @(modalVisible ? "show d-block" : "")" tabindex="-1" style="background-color: rgba(0,0,0,0.4);">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <EditForm Model="@PacienteActual" OnValidSubmit="ValidarYGuardar">
+                <div class="modal-header">
+                    <h5 class="modal-title">Paciente</h5>
+                    <button type="button" class="btn-close" @onclick="CerrarModal"></button>
+                </div>
+                <div class="modal-body">
+                    <DataAnnotationsValidator />
+                    <ValidationSummary />
+
+                    <div class="mb-3">
+                        <label>Cédula</label>
+                        <InputText class="form-control"
+                                   Value="@PacienteActual.CedulaPaciente"
+                                   ValueChanged="(v) => PacienteActual.CedulaPaciente = FiltrarSoloNumeros(v)"
+                                   ValueExpression="() => PacienteActual.CedulaPaciente"
+                                   disabled="@(!EsAdmin)" />
+
+                    </div>
+
+                    <div class="mb-3">
+                        <label>Nombre</label>
+                        <InputText class="form-control"
+                                   Value="@PacienteActual.NombrePaciente"
+                                   ValueChanged="(v) => PacienteActual.NombrePaciente = FormatearNombre(v)"
+                                   ValueExpression="() => PacienteActual.NombrePaciente" />
+                    </div>
+
+                    <div class="mb-3">
+                        <label>Fecha de Nacimiento</label>
+                        <InputDate class="form-control" @bind-Value="PacienteActual.FechaNacPaciente"
+                                   disabled="@(!EsAdmin)" />
+                    </div>
+
+                    <div class="mb-3">
+                        <label>Dirección</label>
+                        <InputText class="form-control" @bind-Value="PacienteActual.DireccionPaciente" />
+                    </div>
+
+                    <div class="mb-3">
+                        <label>Correo</label>
+                        <InputText class="form-control" @bind-Value="PacienteActual.CorreoElectronicoPaciente" />
+                    </div>
+
+                    <div class="mb-3">
+                        <label>Teléfono</label>
+                        <InputText class="form-control"
+                                   Value="@PacienteActual.TelefonoPaciente"
+                                   ValueChanged="(v) => PacienteActual.TelefonoPaciente = FiltrarSoloNumeros(v)"
+                                   ValueExpression="() => PacienteActual.TelefonoPaciente" />
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-primary">Guardar</button>
+                    <button type="button" class="btn btn-secondary" @onclick="CerrarModal">Cancelar</button>
+                </div>
+            </EditForm>
+        </div>
+    </div>
+</div>
+
 @code {
     private bool isRendered = false;
     private bool showContent = false;
+    private bool modalVisible = false;
+
     private List<PacienteDto> ListaPacientes = new();
     private PacienteDto PacienteActual = new();
     private ClaimsPrincipal? user;
+
+    private string criterioBusqueda = "";
+    private string valorBusqueda = "";
+
+    private bool EsAdmin => user?.IsInRole("administrador") ?? false;
+    private bool EsRecepcionista => user?.IsInRole("recepcionista") ?? false;
+
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -135,15 +194,20 @@ else
             }
 
             showContent = true;
-            await CargarPacientes();
-
             StateHasChanged();
         }
     }
-   
-    private async Task CargarPacientes()
+
+    private async Task BuscarPacientes()
     {
-        ListaPacientes = (await ApiService.GetPacientesAsync()).ToList();
+        if (string.IsNullOrWhiteSpace(criterioBusqueda) || string.IsNullOrWhiteSpace(valorBusqueda))
+        {
+            ListaPacientes = (await ApiService.GetPacientesAsync()).ToList();
+        }
+        else
+        {
+            ListaPacientes = (await ApiService.BuscarPacientesAsync(criterioBusqueda, valorBusqueda)).ToList();
+        }
     }
 
     private async Task GuardarPaciente()
@@ -156,14 +220,59 @@ else
         if (result.IsSuccessStatusCode)
         {
             await JS.InvokeVoidAsync("alert", "Paciente guardado correctamente.");
-            await CargarPacientes();
             PacienteActual = new PacienteDto();
+            await BuscarPacientes();
+            modalVisible = false;
         }
         else
         {
             await JS.InvokeVoidAsync("alert", $"Error al guardar: {result.StatusCode}");
         }
     }
+
+    private async Task ValidarYGuardar()
+    {
+        if (!ValidarCedula(PacienteActual.CedulaPaciente))
+        {
+            await JS.InvokeVoidAsync("alert", "La cédula ingresada no es válida.");
+            return;
+        }
+
+        if (!PacienteActual.CorreoElectronicoPaciente.Contains("@"))
+        {
+            await JS.InvokeVoidAsync("alert", "Ingrese un correo electrónico válido.");
+            return;
+        }
+
+        PacienteActual.EdadPaciente = CalcularEdad(PacienteActual.FechaNacPaciente);
+        PacienteActual.FechaRegistro = DateTime.Now;
+        PacienteActual.Anulado = false;
+
+        HttpResponseMessage result;
+
+        if (PacienteActual.IdPaciente == 0)
+        {
+            result = await ApiService.CrearPacienteAsync(PacienteActual);
+        }
+        else
+        {
+            result = await ApiService.EditarPacienteAsync(PacienteActual.IdPaciente, PacienteActual);
+        }
+
+        if (result.IsSuccessStatusCode)
+        {
+            await JS.InvokeVoidAsync("alert", "Paciente guardado correctamente.");
+            PacienteActual = new PacienteDto();
+            await BuscarPacientes();
+            modalVisible = false;
+        }
+        else
+        {
+            var msg = await result.Content.ReadAsStringAsync();
+            await JS.InvokeVoidAsync("alert", $"Error al guardar: {result.StatusCode} \n{msg}");
+        }
+    }
+
 
     private void EditarPaciente(PacienteDto paciente)
     {
@@ -179,11 +288,36 @@ else
                 TelefonoPaciente = paciente.TelefonoPaciente,
                 IdUsuario = paciente.IdUsuario
             };
+        modalVisible = true;
     }
 
-    private void Cancelar()
+    private async Task ConfirmarAnulacion(int id)
+    {
+        var confirm = await JS.InvokeAsync<bool>("confirm", "¿Desea anular este paciente?");
+        if (confirm)
+        {
+            var result = await ApiService.AnularPacienteAsync(id);
+            if (result.IsSuccessStatusCode)
+            {
+                await BuscarPacientes();
+                await JS.InvokeVoidAsync("alert", "Paciente anulado.");
+            }
+            else
+            {
+                await JS.InvokeVoidAsync("alert", $"Error: {result.StatusCode}");
+            }
+        }
+    }
+
+    private void MostrarModal()
     {
         PacienteActual = new PacienteDto();
+        modalVisible = true;
+    }
+
+    private void CerrarModal()
+    {
+        modalVisible = false;
     }
 
     private int CalcularEdad(DateTime fechaNacimiento)
@@ -192,5 +326,35 @@ else
         var edad = hoy.Year - fechaNacimiento.Year;
         if (fechaNacimiento > hoy.AddYears(-edad)) edad--;
         return edad;
+    }
+
+    private bool ValidarCedula(string cedula)
+    {
+        if (cedula.Length != 10 || !cedula.All(char.IsDigit))
+            return false;
+
+        int sum = 0;
+        for (int i = 0; i < 9; i++)
+        {
+            int digit = int.Parse(cedula[i].ToString());
+            int coef = (i % 2 == 0) ? 2 : 1;
+            int product = digit * coef;
+            sum += (product >= 10) ? (product - 9) : product;
+        }
+
+        int lastDigit = int.Parse(cedula[9].ToString());
+        int calculatedDigit = (sum % 10 == 0) ? 0 : (10 - (sum % 10));
+
+        return lastDigit == calculatedDigit;
+    }
+
+    private string FiltrarSoloNumeros(string input)
+    {
+        return new string(input?.Where(char.IsDigit).ToArray() ?? Array.Empty<char>());
+    }
+
+    private string FormatearNombre(string input)
+    {
+        return string.IsNullOrWhiteSpace(input) ? "" : input.ToUpperInvariant();
     }
 }

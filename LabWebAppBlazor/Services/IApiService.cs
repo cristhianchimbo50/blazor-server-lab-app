@@ -14,7 +14,11 @@ namespace LabWebAppBlazor.Services
 
         Task<HttpResponseMessage> CambiarClaveAsync(CambiarClaveDto modelo);
 
+        Task<IEnumerable<PacienteDto>> BuscarPacientesAsync(string campo, string valor);
 
+        Task<HttpResponseMessage> AnularPacienteAsync(int id);
+
+        Task<HttpResponseMessage> EditarPacienteAsync(int id, PacienteDto paciente);
 
     }
 }

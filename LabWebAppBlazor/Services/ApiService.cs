@@ -22,20 +22,15 @@ namespace LabWebAppBlazor.Services
 
             if (!await AttachTokenAsync(request))
             {
-                Console.WriteLine("⚠️ No se pudo agregar el token. Abandonando llamada.");
                 return Enumerable.Empty<PacienteDto>();
             }
 
-            Console.WriteLine("📡 GET /pacientes con token");
-            Console.WriteLine("🔐 Header Authorization: " + request.Headers.Authorization);
 
             var response = await _http.SendAsync(request);
-            Console.WriteLine($"📬 Código respuesta: {(int)response.StatusCode} {response.StatusCode}");
 
             if (!response.IsSuccessStatusCode)
             {
                 var body = await response.Content.ReadAsStringAsync();
-                Console.WriteLine("❌ Cuerpo de error: " + body);
                 return Enumerable.Empty<PacienteDto>();
             }
 
@@ -51,15 +46,11 @@ namespace LabWebAppBlazor.Services
 
             if (!await AttachTokenAsync(request))
             {
-                Console.WriteLine("⚠️ No se pudo agregar token en POST.");
                 return new HttpResponseMessage(System.Net.HttpStatusCode.Unauthorized);
             }
 
             var response = await _http.SendAsync(request);
             var content = await response.Content.ReadAsStringAsync();
-
-            Console.WriteLine($"📤 POST pacientes -> STATUS: {response.StatusCode}");
-            Console.WriteLine($"📤 BODY: {content}");
 
             return response;
         }
@@ -71,7 +62,6 @@ namespace LabWebAppBlazor.Services
             if (!response.IsSuccessStatusCode)
             {
                 var error = await response.Content.ReadAsStringAsync();
-                Console.WriteLine($"❌ Login fallido: {error}");
                 return null;
             }
 
@@ -84,12 +74,10 @@ namespace LabWebAppBlazor.Services
 
             if (!await AttachTokenAsync(request))
             {
-                Console.WriteLine("⚠️ Token no válido para verificar.");
                 return false;
             }
 
             var response = await _http.SendAsync(request);
-            Console.WriteLine($"🔍 Verificando token -> {response.StatusCode}");
             return response.IsSuccessStatusCode;
         }
 
@@ -102,13 +90,11 @@ namespace LabWebAppBlazor.Services
 
             if (!tokenResult.Success || tokenResult.Value == null || string.IsNullOrWhiteSpace(tokenResult.Value.Token))
             {
-                Console.WriteLine("❌ Token inválido o ausente en sesión.");
                 return false;
             }
 
             var token = tokenResult.Value.Token;
             request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
-            Console.WriteLine("✅ Token adjuntado correctamente.");
             return true;
         }
 
@@ -146,6 +132,46 @@ namespace LabWebAppBlazor.Services
             return await _http.SendAsync(request);
         }
 
+
+        public async Task<IEnumerable<PacienteDto>> BuscarPacientesAsync(string campo, string valor)
+        {
+            var url = $"pacientes/buscar?campo={Uri.EscapeDataString(campo)}&valor={Uri.EscapeDataString(valor)}";
+
+            var request = new HttpRequestMessage(HttpMethod.Get, url);
+
+            if (!await AttachTokenAsync(request))
+                return Enumerable.Empty<PacienteDto>();
+
+            var response = await _http.SendAsync(request);
+
+            if (!response.IsSuccessStatusCode)
+                return Enumerable.Empty<PacienteDto>();
+
+            return await response.Content.ReadFromJsonAsync<IEnumerable<PacienteDto>>() ?? [];
+        }
+
+        public async Task<HttpResponseMessage> AnularPacienteAsync(int id)
+        {
+            var request = new HttpRequestMessage(HttpMethod.Put, $"pacientes/anular/{id}");
+
+            if (!await AttachTokenAsync(request))
+                return new HttpResponseMessage(System.Net.HttpStatusCode.Unauthorized);
+
+            return await _http.SendAsync(request);
+        }
+
+        public async Task<HttpResponseMessage> EditarPacienteAsync(int id, PacienteDto paciente)
+        {
+            var request = new HttpRequestMessage(HttpMethod.Put, $"pacientes/{id}")
+            {
+                Content = JsonContent.Create(paciente)
+            };
+
+            if (!await AttachTokenAsync(request))
+                return new HttpResponseMessage(System.Net.HttpStatusCode.Unauthorized);
+
+            return await _http.SendAsync(request);
+        }
 
 
 

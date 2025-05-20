@@ -15,35 +15,37 @@
 @inject IApiService ApiService
 @rendermode InteractiveServer
 
-<h3>Iniciar Sesión</h3>
-
-@if (!isRendered)
-{
-    <p>Cargando interfaz...</p>
-}
-else
-{
-    <EditForm Model="@loginModel" OnValidSubmit="HandleLogin" FormName="LoginForm">
-        <DataAnnotationsValidator />
-        <ValidationSummary />
-
-        <div class="mb-3">
-            <label>Correo</label>
-            <InputText @bind-Value="loginModel.CorreoUsuario" class="form-control" />
+<div class="container d-flex align-items-center justify-content-center vh-100">
+    <div class="row w-100 shadow-lg rounded p-4" style="max-width: 900px; background-color: white;">
+        <div class="col-md-6 d-none d-md-block text-center">
+            <img src="images/login-art.png" class="img-fluid" alt="Login Illustration" />
         </div>
-        <div class="mb-3">
-            <label>Contraseña</label>
-            <InputText @bind-Value="loginModel.Clave" type="password" class="form-control" />
+        <div class="col-md-6">
+            <h3 class="mb-4 fw-bold">Iniciar Sesión</h3>
+            <EditForm Model="@loginModel" OnValidSubmit="HandleLogin">
+                <DataAnnotationsValidator />
+                <ValidationSummary />
+
+                <div class="mb-3">
+                    <label for="correo" class="form-label">Correo</label>
+                    <InputText id="correo" @bind-Value="loginModel.CorreoUsuario" class="form-control" />
+                </div>
+
+                <div class="mb-3">
+                    <label for="clave" class="form-label">Contraseña</label>
+                    <InputText id="clave" @bind-Value="loginModel.Clave" type="password" class="form-control" />
+                </div>
+
+                @if (!string.IsNullOrEmpty(error))
+                {
+                    <div class="alert alert-danger" role="alert">@error</div>
+                }
+
+                <button type="submit" class="btn btn-primary w-100">Ingresar</button>
+            </EditForm>
         </div>
-
-        <button class="btn btn-primary" type="submit">Ingresar</button>
-    </EditForm>
-}
-
-@if (!string.IsNullOrEmpty(error))
-{
-    <p class="text-danger">@error</p>
-}
+    </div>
+</div>
 
 @code {
     private bool isRendered = false;
@@ -73,9 +75,7 @@ else
             return;
 
         error = null;
-
         var result = await ApiService.LoginAsync(loginModel);
-        Console.WriteLine("Token generado: " + result?.Token);
 
         if (result == null)
         {
@@ -86,12 +86,7 @@ else
         if (AuthProvider is CustomAuthenticationStateProvider customAuth)
         {
             await customAuth.SignInAsync(result);
-            Console.WriteLine("Sesión guardada. Esperando confirmación...");
-
-            // 🔁 FORZAR reautenticación para asegurar lectura inmediata del estado
             customAuth.ForceReauthentication();
-
-            // ⏳ Espera a que Blazor actualice internamente el estado (sí, es necesario)
             await Task.Delay(1000);
 
             var authState = await AuthProvider.GetAuthenticationStateAsync();
@@ -109,16 +104,10 @@ else
                     Navigation.NavigateTo(redirect, forceLoad: true);
                 }
             }
-
             else
             {
-                Console.WriteLine("Falló la autenticación después del login.");
-                error = "Hubo un problema al autenticar. Intente de nuevo.";
+                error = "Autenticación fallida. Intente de nuevo.";
             }
-        }
-        else
-        {
-            Console.WriteLine("⚠Error al castear AuthProvider.");
         }
     }
 }

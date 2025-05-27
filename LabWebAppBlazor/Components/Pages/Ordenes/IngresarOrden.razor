@@ -18,19 +18,20 @@
 }
 else
 {
-    <div class="mt-3">
-        <label>Fecha de la orden</label>
-        <InputDate @bind-Value="FechaOrdenSeleccionada" class="form-control" />
-    </div>
-
-    <!-- PACIENTE -->
-    <div class="mb-3">
-        <label>Cédula del paciente</label>
-        <div class="input-group">
-            <InputText class="form-control" @bind-Value="Cedula" @onkeydown="BuscarConEnter" />
-            <button class="btn btn-outline-primary" @onclick="AbrirModalBusqueda">Buscar</button>
+    <div class="row mb-3">
+        <div class="col-md-4">
+            <label>Fecha de la orden</label>
+            <InputDate @bind-Value="FechaOrdenSeleccionada" class="form-control" />
+        </div>
+        <div class="col-md-6">
+            <label>Cédula del paciente</label>
+            <div class="input-group">
+                <InputText class="form-control" @bind-Value="Cedula" @onkeydown="BuscarConEnter" />
+                <button class="btn btn-outline-primary" @onclick="BuscarPorCedula">Buscar</button>
+            </div>
         </div>
     </div>
+
 
     @if (PacienteActual is not null)
     {
@@ -57,23 +58,31 @@ else
                 <label>Correo</label>
                 <input class="form-control" value="@PacienteActual.CorreoElectronicoPaciente" disabled />
             </div>
+
+
         </div>
     }
 
+    <div class="row mb-3">
+        <div class="col-md-6">
+            <label>Médico</label>
+            <div class="input-group">
+                <select class="form-select" @bind="MedicoIdSeleccionado">
+                    <option value="">-- Seleccione un médico --</option>
+                    @foreach (var medico in Medicos)
+                    {
+                        <option value="@medico.IdMedico">@medico.NombreMedico</option>
+                    }
+                </select>
+                <button class="btn btn-outline-secondary" type="button" @onclick="AbrirModalNuevoMedico">Nuevo Médico</button>
+            </div>
+        </div>
+    </div>
 
-    <!-- MÉDICO -->
-    <label>Médico</label>
-    <select class="form-select" @bind="MedicoIdSeleccionado">
-        <option value="">-- Seleccione un médico --</option>
-        @foreach (var medico in Medicos)
-        {
-            <option value="@medico.IdMedico">@medico.NombreMedico</option>
-        }
-    </select>
-    <div class="mt-3 d-flex gap-2">
-        <button class="btn btn-outline-secondary" @onclick="AbrirModalNuevoMedico">Nuevo Médico</button>
+    <div class="mb-3">
         <button class="btn btn-primary" @onclick="() => MostrarModalExamen = true">Agregar Examen</button>
     </div>
+
 
     @if (ExamenesSeleccionados.Any())
     {
@@ -83,7 +92,7 @@ else
                     <th>Nombre</th>
                     <th>Estudio</th>
                     <th>Precio</th>
-                    <th></th>
+                    <th>Acciones</th>
                 </tr>
             </thead>
             <tbody>
@@ -301,6 +310,34 @@ else
     </div>
 }
 
+@if (mostrarModalPaciente)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <EditForm Model="@NuevoPaciente" OnValidSubmit="GuardarNuevoPaciente">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Registrar nuevo paciente</h5>
+                        <button class="btn-close" @onclick="() => mostrarModalPaciente = false"></button>
+                    </div>
+                    <div class="modal-body">
+                        <DataAnnotationsValidator />
+                        <ValidationSummary />
+                        <div class="mb-2"><label>Nombre</label><InputText class="form-control" @bind-Value="NuevoPaciente.NombrePaciente" /></div>
+                        <div class="mb-2"><label>Fecha de Nacimiento</label><InputDate class="form-control" @bind-Value="NuevoPaciente.FechaNacPaciente" /></div>
+                        <div class="mb-2"><label>Dirección</label><InputText class="form-control" @bind-Value="NuevoPaciente.DireccionPaciente" /></div>
+                        <div class="mb-2"><label>Correo</label><InputText class="form-control" @bind-Value="NuevoPaciente.CorreoElectronicoPaciente" /></div>
+                        <div class="mb-2"><label>Teléfono</label><InputText class="form-control" @bind-Value="NuevoPaciente.TelefonoPaciente" /></div>
+                    </div>
+                    <div class="modal-footer">
+                        <button class="btn btn-primary" type="submit">Guardar</button>
+                        <button class="btn btn-secondary" type="button" @onclick="() => mostrarModalPaciente = false">Cancelar</button>
+                    </div>
+                </EditForm>
+            </div>
+        </div>
+    </div>
+}
 
 
 @code {
@@ -309,6 +346,11 @@ else
     // Paciente
     private string Cedula = "";
     private PacienteDto? PacienteActual;
+
+    private bool mostrarModalPaciente = false;
+    private bool mostrarConfirmacion = false;
+    private PacienteDto NuevoPaciente = new();
+
 
     // Médico
     private string MedicoNombreInput = "";
@@ -364,15 +406,65 @@ else
 
 
 
-    private async Task BuscarPaciente()
+    private async Task BuscarPorCedula()
     {
-        PacienteActual = await ApiService.ObtenerPacientePorCedulaAsync(Cedula);
+        if (string.IsNullOrWhiteSpace(Cedula))
+        {
+            filtroCedula = "";
+            filtroNombre = "";
+            ResultadosBusqueda.Clear();
+            mostrarModalBusqueda = true;
+            return;
+        }
+
+        if (!ValidarCedula(Cedula))
+        {
+            await JS.InvokeVoidAsync("alert", "Cédula inválida.");
+            return;
+        }
+
+        var paciente = await ApiService.ObtenerPacientePorCedulaAsync(Cedula);
+        if (paciente == null)
+        {
+            var confirm = await JS.InvokeAsync<bool>("confirm", $"Paciente con cédula {Cedula} no encontrado. ¿Deseas registrarlo?");
+            if (confirm)
+            {
+                NuevoPaciente = new PacienteDto { CedulaPaciente = Cedula };
+                mostrarModalPaciente = true;
+            }
+        }
+        else if (paciente.Anulado == true)
+        {
+            var confirmarReactivar = await JS.InvokeAsync<bool>("confirm", $"El paciente con cédula {Cedula} está anulado. ¿Desea reactivarlo?");
+            if (confirmarReactivar)
+            {
+                paciente.Anulado = false;
+                paciente.FechaRegistro = DateTime.Now;
+                paciente.EdadPaciente = CalcularEdad(paciente.FechaNacPaciente);
+
+                var resultado = await ApiService.EditarPacienteAsync(paciente.IdPaciente, paciente);
+                if (resultado.IsSuccessStatusCode)
+                {
+                    await JS.InvokeVoidAsync("alert", "Paciente reactivado correctamente.");
+                    PacienteActual = paciente;
+                }
+                else
+                {
+                    await JS.InvokeVoidAsync("alert", $"Error al reactivar paciente: {resultado.StatusCode}");
+                }
+            }
+        }
+        else
+        {
+            PacienteActual = paciente;
+        }
     }
+
 
     private async Task BuscarConEnter(KeyboardEventArgs e)
     {
         if (e.Key == "Enter")
-            await BuscarPaciente();
+            await BuscarPorCedula();
     }
 
     private async Task DetectarEnterMedico(KeyboardEventArgs e)
@@ -533,6 +625,7 @@ else
     private void SeleccionarPaciente(PacienteDto paciente)
     {
         PacienteActual = paciente;
+        Cedula = paciente.CedulaPaciente;
         mostrarModalBusqueda = false;
         MostrarModalBuscarPaciente = false;
     }
@@ -550,7 +643,6 @@ else
         ResultadosBusqueda = new();
         mostrarModalBusqueda = true;
     }
-
 
     private async Task BuscarPacientesModal()
     {
@@ -570,7 +662,49 @@ else
             .ToList();
     }
 
+    private int CalcularEdad(DateTime fechaNacimiento)
+    {
+        var hoy = DateTime.Today;
+        var edad = hoy.Year - fechaNacimiento.Year;
+        if (fechaNacimiento > hoy.AddYears(-edad)) edad--;
+        return edad;
+    }
 
+    private bool ValidarCedula(string cedula)
+    {
+        if (cedula.Length != 10 || !cedula.All(char.IsDigit))
+            return false;
 
+        int sum = 0;
+        for (int i = 0; i < 9; i++)
+        {
+            int digit = int.Parse(cedula[i].ToString());
+            int coef = (i % 2 == 0) ? 2 : 1;
+            int product = digit * coef;
+            sum += (product >= 10) ? (product - 9) : product;
+        }
 
+        int lastDigit = int.Parse(cedula[9].ToString());
+        int calculatedDigit = (sum % 10 == 0) ? 0 : (10 - (sum % 10));
+
+        return lastDigit == calculatedDigit;
+    }
+
+    private async Task GuardarNuevoPaciente()
+    {
+        NuevoPaciente.EdadPaciente = CalcularEdad(NuevoPaciente.FechaNacPaciente);
+        NuevoPaciente.FechaRegistro = DateTime.Now;
+        NuevoPaciente.Anulado = false;
+
+        var result = await ApiService.CrearPacienteAsync(NuevoPaciente);
+        if (result.IsSuccessStatusCode)
+        {
+            PacienteActual = NuevoPaciente;
+            mostrarModalPaciente = false;
+        }
+        else
+        {
+            await JS.InvokeVoidAsync("alert", "Error al registrar paciente.");
+        }
+    }
 }

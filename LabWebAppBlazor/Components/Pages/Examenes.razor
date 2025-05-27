@@ -1,0 +1,382 @@
+﻿@page "/examenes"
+@rendermode InteractiveServer
+@using LabWebAppBlazor.Models
+@using LabWebAppBlazor.Services
+@using Microsoft.AspNetCore.Components.Authorization
+@using System.Security.Claims;
+@inject IApiService ApiService
+@inject IJSRuntime JS
+@inject AuthenticationStateProvider AuthProvider
+@inject NavigationManager Navigation
+
+<h3>Gestión de Exámenes</h3>
+
+@if (!isRendered)
+{
+    <p>Cargando...</p>
+}
+else if (!showContent)
+{
+    <p>No autorizado.</p>
+}
+else
+{
+    <!-- Filtros de búsqueda -->
+    <div class="row mb-3">
+        <div class="col-md-3">
+            <label>Buscar por</label>
+            <InputSelect class="form-control" @bind-Value="criterioBusqueda">
+                <option value="">-- Seleccione --</option>
+                <option value="nombre">Nombre</option>
+                <option value="estudio">Estudio</option>
+                <option value="tecnica">Técnica</option>
+                <option value="tipo">Tipo Examen</option>
+            </InputSelect>
+        </div>
+        <div class="col-md-5">
+            <label>Valor</label>
+            <InputText class="form-control" @bind-Value="valorBusqueda" />
+        </div>
+        <div class="col-md-4 mt-4 d-flex gap-2">
+            <button class="btn btn-primary" @onclick="BuscarExamenes">Buscar</button>
+            <button class="btn btn-success" @onclick="AbrirModalNuevoExamen">Nuevo Examen</button>
+        </div>
+    </div>
+
+    <!-- Tabla de exámenes -->
+    @if (ListaExamenes == null || ListaExamenes.Count == 0)
+    {
+        <p>No se encontraron exámenes.</p>
+    }
+    else
+    {
+        <table class="table table-bordered">
+            <thead>
+                <tr>
+                    <th>Nombre</th>
+                    <th>Estudio</th>
+                    <th>Tipo</th>
+                    <th>Técnica</th>
+                    <th>Precio</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var examen in ListaExamenes)
+                {
+                    <tr>
+                        <td>@examen.NombreExamen</td>
+                        <td>@examen.Estudio</td>
+                        <td>@examen.TipoExamen</td>
+                        <td>@examen.Tecnica</td>
+                        <td>@(examen.Precio?.ToString("C") ?? "-")</td>
+                        <td>
+                            <button class="btn btn-sm btn-info" @onclick="() => EditarExamen(examen.IdExamen)">Editar</button>
+                            <button class="btn btn-sm btn-danger" @onclick="() => AnularExamen(examen.IdExamen)">Anular</button>
+                        </td>
+
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+
+    <!-- MODAL INGRESAR EXAMEN -->
+    @if (MostrarModal)
+    {
+        <div class="modal show d-block" style="background-color: rgba(0,0,0,0.5);">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <EditForm Model="Formulario.Examen" OnValidSubmit="GuardarExamen">
+                        <DataAnnotationsValidator />
+                        <div class="modal-header">
+                            <h5 class="modal-title">Nuevo Examen</h5>
+                            <button type="button" class="btn-close" @onclick="CerrarModal" />
+                        </div>
+                        <div class="modal-body">
+                            <ValidationSummary />
+
+                            <div class="row">
+                                <div class="col-md-6 mb-2">
+                                    <label>Nombre</label>
+                                    <InputText class="form-control" @bind-Value="Formulario.Examen.NombreExamen" />
+                                </div>
+                                <div class="col-md-6 mb-2">
+                                    <label>Estudio</label>
+                                    <InputText class="form-control" @bind-Value="Formulario.Examen.Estudio" />
+                                </div>
+                                <div class="col-md-6 mb-2">
+                                    <label>Tipo Examen</label>
+                                    <InputText class="form-control" @bind-Value="Formulario.Examen.TipoExamen" />
+                                </div>
+                                <div class="col-md-6 mb-2">
+                                    <label>Técnica</label>
+                                    <InputText class="form-control" @bind-Value="Formulario.Examen.Tecnica" />
+                                </div>
+                                <div class="col-md-6 mb-2">
+                                    <label>Unidad</label>
+                                    <InputText class="form-control" @bind-Value="Formulario.Examen.Unidad" />
+                                </div>
+                                <div class="col-md-6 mb-2">
+                                    <label>Valor Referencia</label>
+                                    <InputText class="form-control" @bind-Value="Formulario.Examen.ValorReferencia" />
+                                </div>
+                                <div class="col-md-6 mb-2">
+                                    <label>Tipo Muestra</label>
+                                    <InputText class="form-control" @bind-Value="Formulario.Examen.TipoMuestra" />
+                                </div>
+                                <div class="col-md-6 mb-2">
+                                    <label>Tiempo Entrega</label>
+                                    <InputText class="form-control" @bind-Value="Formulario.Examen.TiempoEntrega" />
+                                </div>
+                                <div class="col-md-6 mb-2">
+                                    <label>Precio</label>
+                                    <InputNumber class="form-control" @bind-Value="Formulario.Examen.Precio" />
+                                </div>
+                            </div>
+
+                            <hr />
+                            <h5>Exámenes Hijos</h5>
+                            <table class="table table-sm table-bordered">
+                                <thead>
+                                    <tr><th>Nombre</th><th>Estudio</th><th></th></tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var hijo in HijosSeleccionados)
+                                    {
+                                        <tr>
+                                            <td>@hijo.NombreExamen</td>
+                                            <td>@hijo.Estudio</td>
+                                            <td>
+                                                <button class="btn btn-sm btn-outline-danger" @onclick="() => QuitarHijo(hijo.IdExamen)">Quitar</button>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                            <button type="button" class="btn btn-secondary" @onclick="AbrirModalBusquedaHijo">Agregar Examen Hijo</button>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="submit" class="btn btn-primary">Guardar</button>
+                            <button type="button" class="btn btn-secondary" @onclick="CerrarModal">Cancelar</button>
+                        </div>
+                    </EditForm>
+                </div>
+            </div>
+        </div>
+    }
+
+    <!-- MODAL BUSCAR HIJOS -->
+    @if (MostrarModalBusqueda)
+    {
+        <div class="modal show d-block" style="background-color: rgba(0,0,0,0.4);">
+            <div class="modal-dialog modal-md">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Buscar Examen Hijo</h5>
+                        <button class="btn-close" @onclick="CerrarModalBusqueda" />
+                    </div>
+                    <div class="modal-body">
+                        <div class="row mb-2">
+                            <div class="col-5">
+                                <InputSelect class="form-control" @bind-Value="filtroBusquedaHijo">
+                                    <option value="nombre">Nombre</option>
+                                    <option value="estudio">Estudio</option>
+                                </InputSelect>
+                            </div>
+                            <div class="col-7">
+                                <InputText class="form-control" @bind-Value="valorBusquedaHijo" />
+                            </div>
+                        </div>
+                        <button class="btn btn-sm btn-primary mb-2" @onclick="BuscarHijos">Buscar</button>
+
+                        <table class="table table-sm table-hover">
+                            <thead><tr><th>Nombre</th><th>Estudio</th></tr></thead>
+                            <tbody>
+                                @foreach (var hijo in ResultadosBusquedaHijos)
+                                {
+                                    <tr @ondblclick="() => SeleccionarHijo(hijo)">
+                                        <td>@hijo.NombreExamen</td>
+                                        <td>@hijo.Estudio</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+}
+
+@code {
+    private List<ExamenDto> ListaExamenes = new();
+    private string criterioBusqueda = "", valorBusqueda = "";
+    private bool isRendered = false, showContent = false;
+
+    private bool MostrarModal = false;
+    private bool MostrarModalBusqueda = false;
+
+    private ExamenConComposicionDto Formulario = new();
+    private List<ExamenDto> HijosSeleccionados = new();
+
+    private string filtroBusquedaHijo = "nombre";
+    private string valorBusquedaHijo = "";
+    private List<ExamenDto> ResultadosBusquedaHijos = new();
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            var auth = await AuthProvider.GetAuthenticationStateAsync();
+            if (!auth.User.Identity?.IsAuthenticated ?? true)
+            {
+                Navigation.NavigateTo("/login", true);
+                return;
+            }
+
+            isRendered = true;
+            showContent = true;
+            await CargarExamenes();
+            StateHasChanged();
+        }
+    }
+
+    private async Task CargarExamenes()
+    {
+        ListaExamenes = (await ApiService.GetExamenesAsync()).ToList();
+    }
+
+    private async Task BuscarExamenes()
+    {
+        var todos = await ApiService.GetExamenesAsync();
+        if (string.IsNullOrWhiteSpace(criterioBusqueda) || string.IsNullOrWhiteSpace(valorBusqueda))
+        {
+            ListaExamenes = todos.ToList();
+            return;
+        }
+
+        var val = valorBusqueda.ToLower();
+        ListaExamenes = criterioBusqueda switch
+        {
+            "nombre" => todos.Where(e => e.NombreExamen.ToLower().Contains(val)).ToList(),
+            "estudio" => todos.Where(e => e.Estudio?.ToLower().Contains(val) ?? false).ToList(),
+            "tecnica" => todos.Where(e => e.Tecnica?.ToLower().Contains(val) ?? false).ToList(),
+            "tipo" => todos.Where(e => e.TipoExamen?.ToLower().Contains(val) ?? false).ToList(),
+            _ => todos.ToList()
+        };
+    }
+
+    private void AbrirModalNuevoExamen()
+    {
+        Formulario = new();
+        HijosSeleccionados = new();
+        MostrarModal = true;
+    }
+
+    private void CerrarModal() => MostrarModal = false;
+
+    private async Task GuardarExamen()
+    {
+        Formulario.IdExamenesHijos = HijosSeleccionados.Select(h => h.IdExamen).Distinct().ToList();
+
+        HttpResponseMessage response;
+
+        if (Formulario.Examen.IdExamen == 0)
+        {
+            response = await ApiService.CrearExamenConHijosAsync(Formulario);
+        }
+        else
+        {
+            // 1. Actualizar examen principal
+            response = await ApiService.EditarExamenAsync(Formulario.Examen.IdExamen, Formulario.Examen);
+
+            // 2. Eliminar relaciones previas
+            var idPadre = Formulario.Examen.IdExamen;
+            var hijosPrevios = await ApiService.ObtenerHijosDeExamenAsync(idPadre);
+            foreach (var hijo in hijosPrevios)
+            {
+                await ApiService.EliminarExamenHijoAsync(idPadre, hijo.IdExamen);
+            }
+
+            // 3. Reagregar relaciones nuevas
+            foreach (var idHijo in Formulario.IdExamenesHijos)
+            {
+                await ApiService.AgregarExamenHijoAsync(idPadre, idHijo);
+            }
+        }
+
+        if (response.IsSuccessStatusCode)
+        {
+            MostrarModal = false;
+            await CargarExamenes();
+        }
+        else
+        {
+            await JS.InvokeVoidAsync("alert", "Error al guardar examen.");
+        }
+    }
+
+    private async Task AnularExamen(int id)
+    {
+        if (await JS.InvokeAsync<bool>("confirm", "¿Deseas anular este examen?"))
+        {
+            await ApiService.AnularExamenAsync(id);
+            await CargarExamenes();
+        }
+    }
+
+    private void QuitarHijo(int id) =>
+        HijosSeleccionados = HijosSeleccionados.Where(e => e.IdExamen != id).ToList();
+
+    private void AbrirModalBusquedaHijo()
+    {
+        valorBusquedaHijo = "";
+        ResultadosBusquedaHijos = new();
+        MostrarModalBusqueda = true;
+    }
+
+    private void CerrarModalBusqueda() => MostrarModalBusqueda = false;
+
+    private async Task BuscarHijos()
+    {
+        var todos = await ApiService.GetExamenesAsync();
+        var val = valorBusquedaHijo.ToLower();
+        ResultadosBusquedaHijos = filtroBusquedaHijo switch
+        {
+            "nombre" => todos.Where(e => e.NombreExamen.ToLower().Contains(val)).ToList(),
+            "estudio" => todos.Where(e => e.Estudio?.ToLower().Contains(val) ?? false).ToList(),
+            _ => []
+        };
+    }
+
+    private void SeleccionarHijo(ExamenDto examen)
+    {
+        if (!HijosSeleccionados.Any(x => x.IdExamen == examen.IdExamen))
+            HijosSeleccionados.Add(examen);
+
+        MostrarModalBusqueda = false;
+    }
+
+    private async Task EditarExamen(int id)
+    {
+        var examen = await ApiService.GetExamenByIdAsync(id);
+        if (examen is null)
+        {
+            await JS.InvokeVoidAsync("alert", "Examen no encontrado.");
+            return;
+        }
+
+        var hijos = await ApiService.ObtenerHijosDeExamenAsync(id);
+
+        Formulario = new ExamenConComposicionDto
+            {
+                Examen = examen,
+                IdExamenesHijos = hijos.Select(h => h.IdExamen).ToList()
+            };
+
+        HijosSeleccionados = hijos.ToList();
+        MostrarModal = true;
+    }
+
+}

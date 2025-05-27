@@ -42,6 +42,8 @@
                 }
 
                 <button type="submit" class="btn btn-primary w-100">Ingresar</button>
+                <br />
+                <button type="submit" class="btn btn-primary w-100">Recuperar Contraseña</button>
             </EditForm>
         </div>
     </div>
@@ -52,6 +54,14 @@
     private LoginRequestDto loginModel = new();
     private string? error;
     private string? redirectUrl;
+
+    private int intentosFallidos = 0;
+    private int maxIntentos = 3;
+    private bool loginBloqueado = false;
+    private int segundosEspera = 30;
+    private DateTime? horaDesbloqueo;
+    private Timer? temporizador;
+
 
     protected override void OnInitialized()
     {
@@ -71,7 +81,7 @@
 
     private async Task HandleLogin()
     {
-        if (!isRendered)
+        if (!isRendered || loginBloqueado)
             return;
 
         error = null;
@@ -79,9 +89,24 @@
 
         if (result == null)
         {
-            error = "Credenciales inválidas.";
+            intentosFallidos++;
+
+            if (intentosFallidos >= maxIntentos)
+            {
+                loginBloqueado = true;
+                horaDesbloqueo = DateTime.Now.AddSeconds(segundosEspera);
+                error = $"Demasiados intentos fallidos. Intente nuevamente en {segundosEspera} segundos.";
+                IniciarTemporizadorDesbloqueo();
+            }
+            else
+            {
+                error = $"Credenciales inválidas. Intento {intentosFallidos} de {maxIntentos}.";
+            }
+
             return;
         }
+
+        intentosFallidos = 0;
 
         if (AuthProvider is CustomAuthenticationStateProvider customAuth)
         {
@@ -110,4 +135,19 @@
             }
         }
     }
+
+    private void IniciarTemporizadorDesbloqueo()
+    {
+        temporizador?.Dispose();
+        temporizador = new Timer(async _ =>
+        {
+            loginBloqueado = false;
+            intentosFallidos = 0;
+            error = null;
+            horaDesbloqueo = null;
+            await InvokeAsync(StateHasChanged);
+        }, null, segundosEspera * 1000, Timeout.Infinite);
+    }
+
+
 }

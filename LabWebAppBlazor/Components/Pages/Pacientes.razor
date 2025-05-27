@@ -80,16 +80,24 @@ else
                             {
                                 <button class="btn btn-sm btn-warning me-2" @onclick="() => EditarPaciente(paciente)">Editar</button>
 
-                                @if (user?.IsInRole("administrador") == true)
+                                @if (EsAdmin)
                                 {
                                     <button class="btn btn-sm btn-danger" @onclick="() => ConfirmarAnulacion(paciente.IdPaciente)">Anular</button>
                                 }
                             }
                             else
                             {
-                                <span class="text-muted">Sin acciones</span>
+                                @if (EsAdmin)
+                                {
+                                    <button class="btn btn-sm btn-success" @onclick="() => ConfirmarReactivacion(paciente)">Activar</button>
+                                }
+                                else
+                                {
+                                    <span class="text-muted">Sin acciones</span>
+                                }
                             }
                         </td>
+
                     </tr>
                 }
             </tbody>
@@ -234,19 +242,73 @@ else
 
     private async Task ValidarYGuardar()
     {
+        var edad = CalcularEdad(PacienteActual.FechaNacPaciente);
+        if (edad < 0 || edad > 120)
+        {
+            await JS.InvokeVoidAsync("alert", "La fecha de nacimiento no es válida. El paciente debe tener entre 0 y 120 años.");
+            return;
+        }
+
         if (!ValidarCedula(PacienteActual.CedulaPaciente))
         {
             await JS.InvokeVoidAsync("alert", "La cédula ingresada no es válida.");
             return;
         }
 
-        if (!PacienteActual.CorreoElectronicoPaciente.Contains("@"))
+        if (string.IsNullOrWhiteSpace(PacienteActual.CorreoElectronicoPaciente) ||
+            !PacienteActual.CorreoElectronicoPaciente.Contains("@"))
         {
             await JS.InvokeVoidAsync("alert", "Ingrese un correo electrónico válido.");
             return;
         }
 
-        PacienteActual.EdadPaciente = CalcularEdad(PacienteActual.FechaNacPaciente);
+        if (PacienteActual.IdPaciente == 0)
+        {
+            var existente = await ApiService.ObtenerPacientePorCedulaAsync(PacienteActual.CedulaPaciente);
+            if (existente != null)
+            {
+                if (existente.Anulado == true)
+                {
+                    var confirmar = await JS.InvokeAsync<bool>(
+                        "confirm",
+                        $"El paciente con cédula {PacienteActual.CedulaPaciente} está anulado. ¿Desea reactivarlo?"
+                    );
+
+                    if (confirmar)
+                    {
+                        existente.Anulado = false;
+                        existente.FechaRegistro = DateTime.Now;
+                        existente.EdadPaciente = CalcularEdad(existente.FechaNacPaciente);
+
+                        var reactivado = await ApiService.EditarPacienteAsync(existente.IdPaciente, existente);
+
+                        if (reactivado.IsSuccessStatusCode)
+                        {
+                            await JS.InvokeVoidAsync("alert", "Paciente reactivado correctamente.");
+                            await BuscarPacientes();
+                            modalVisible = false;
+                            return;
+                        }
+                        else
+                        {
+                            await JS.InvokeVoidAsync("alert", $"Error al reactivar paciente: {reactivado.StatusCode}");
+                            return;
+                        }
+                    }
+                    else
+                    {
+                        return;
+                    }
+                }
+                else
+                {
+                    await JS.InvokeVoidAsync("alert", "Ya existe un paciente registrado con esa cédula.");
+                    return;
+                }
+            }
+        }
+
+        PacienteActual.EdadPaciente = edad;
         PacienteActual.FechaRegistro = DateTime.Now;
         PacienteActual.Anulado = false;
 
@@ -359,4 +421,28 @@ else
     {
         return string.IsNullOrWhiteSpace(input) ? "" : input.ToUpperInvariant();
     }
+
+    private async Task ConfirmarReactivacion(PacienteDto paciente)
+    {
+        var confirmar = await JS.InvokeAsync<bool>("confirm", $"¿Desea reactivar al paciente con cédula {paciente.CedulaPaciente}?");
+        if (confirmar)
+        {
+            paciente.Anulado = false;
+            paciente.FechaRegistro = DateTime.Now;
+            paciente.EdadPaciente = CalcularEdad(paciente.FechaNacPaciente);
+
+            var resultado = await ApiService.EditarPacienteAsync(paciente.IdPaciente, paciente);
+
+            if (resultado.IsSuccessStatusCode)
+            {
+                await JS.InvokeVoidAsync("alert", "Paciente reactivado correctamente.");
+                await BuscarPacientes();
+            }
+            else
+            {
+                await JS.InvokeVoidAsync("alert", $"Error al reactivar paciente: {resultado.StatusCode}");
+            }
+        }
+    }
+
 }

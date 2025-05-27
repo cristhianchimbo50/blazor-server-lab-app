@@ -4,6 +4,7 @@
 @using LabWebAppBlazor.Services
 @using Microsoft.AspNetCore.Components.Authorization
 @using System.Security.Claims;
+
 @inject IApiService ApiService
 @inject AuthenticationStateProvider AuthProvider
 @inject NavigationManager Navigation
@@ -43,7 +44,7 @@ else
 
     </div>
 
-    @if (ListaOrdenes == null || ListaOrdenes.Count == 0)
+    @if (ordenes == null || ordenes.Count == 0)
     {
         <p>No se encontraron órdenes.</p>
     }
@@ -64,7 +65,7 @@ else
                 </tr>
             </thead>
             <tbody>
-                @foreach (var orden in ListaOrdenes)
+                @foreach (var orden in ordenes)
                 {
                     <tr>
                         <td>@orden.NumeroOrden</td>
@@ -84,7 +85,7 @@ else
 }
 
 @code {
-    private List<OrdenDto> ListaOrdenes = new();
+    private List<OrdenDto> ordenes = new();
     private string criterioBusqueda = "";
     private string valorBusqueda = "";
 
@@ -115,7 +116,7 @@ else
 
     private async Task CargarOrdenes()
     {
-        ListaOrdenes = (await ApiService.GetOrdenesAsync()).ToList();
+        ordenes = (await ApiService.GetOrdenesAsync()).ToList();
     }
 
     private async Task BuscarOrdenes()
@@ -124,13 +125,13 @@ else
 
         if (string.IsNullOrWhiteSpace(criterioBusqueda) || string.IsNullOrWhiteSpace(valorBusqueda))
         {
-            ListaOrdenes = todas;
+            ordenes = todas;
         }
         else
         {
             var val = valorBusqueda.ToLower();
 
-            ListaOrdenes = criterioBusqueda switch
+            ordenes = criterioBusqueda switch
             {
                 "numero" => todas.Where(o => o.NumeroOrden.ToLower().Contains(val)).ToList(),
                 "cedula" => todas.Where(o => o.CedulaPaciente.ToLower().Contains(val)).ToList(),

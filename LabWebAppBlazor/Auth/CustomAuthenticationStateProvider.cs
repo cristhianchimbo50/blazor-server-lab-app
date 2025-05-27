@@ -76,14 +76,13 @@ public class CustomAuthenticationStateProvider : AuthenticationStateProvider
     private ClaimsPrincipal CreateClaimsPrincipal(LoginResponseDto loginData)
     {
         var claims = new List<Claim>
-        {
-            new Claim(ClaimTypes.Name, loginData.CorreoUsuario ?? "usuario@desconocido.com"),
-            new Claim(ClaimTypes.Role, loginData.Rol ?? "Invitado")
-        };
+    {
+        new Claim(ClaimTypes.Name, loginData.CorreoUsuario ?? "usuario@desconocido.com"),
+        new Claim(ClaimTypes.Role, loginData.Rol ?? "Invitado"),
+        new Claim(ClaimTypes.NameIdentifier, loginData.IdUsuario.ToString()) // <- ESTA LÍNEA ES CLAVE
+    };
 
         var identity = new ClaimsIdentity(claims, "AppAuth");
         return new ClaimsPrincipal(identity);
     }
-
-
 }

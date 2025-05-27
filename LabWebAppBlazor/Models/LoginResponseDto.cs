@@ -18,6 +18,9 @@ namespace LabWebAppBlazor.Models
 
         [JsonPropertyName("esContraseñaTemporal")]
         public bool EsContraseñaTemporal { get; set; }
+
+        [JsonPropertyName("idUsuario")]
+        public int IdUsuario { get; set; }
     }
 
 }

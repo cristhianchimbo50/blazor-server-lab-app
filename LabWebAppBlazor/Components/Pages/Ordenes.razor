@@ -116,31 +116,39 @@ else
 
     private async Task CargarOrdenes()
     {
-        ordenes = (await ApiService.GetOrdenesAsync()).ToList();
+        ordenes = (await ApiService.GetOrdenesAsync())
+            .OrderByDescending(o => o.IdOrden)
+            .ToList();
     }
+
 
     private async Task BuscarOrdenes()
     {
-        var todas = (await ApiService.GetOrdenesAsync()).ToList();
+        var todas = await ApiService.GetOrdenesAsync();
 
         if (string.IsNullOrWhiteSpace(criterioBusqueda) || string.IsNullOrWhiteSpace(valorBusqueda))
         {
-            ordenes = todas;
+            ordenes = todas.OrderByDescending(o => o.IdOrden).ToList();
         }
         else
         {
-            var val = valorBusqueda.ToLower();
+            var val = valorBusqueda.Trim().ToLower();
 
             ordenes = criterioBusqueda switch
             {
-                "numero" => todas.Where(o => o.NumeroOrden.ToLower().Contains(val)).ToList(),
-                "cedula" => todas.Where(o => o.CedulaPaciente.ToLower().Contains(val)).ToList(),
-                "nombre" => todas.Where(o => o.NombrePaciente.ToLower().Contains(val)).ToList(),
-                "estadoPago" => todas.Where(o => o.EstadoPago.ToLower().Contains(val)).ToList(),
-                _ => []
+                "numero" => todas.Where(o => !string.IsNullOrEmpty(o.NumeroOrden) && o.NumeroOrden.ToLower().Contains(val)).ToList(),
+                "cedula" => todas.Where(o => !string.IsNullOrEmpty(o.CedulaPaciente) && o.CedulaPaciente.ToLower().Contains(val)).ToList(),
+                "nombre" => todas.Where(o => !string.IsNullOrEmpty(o.NombrePaciente) && o.NombrePaciente.ToLower().Contains(val)).ToList(),
+                "estadoPago" => todas.Where(o => !string.IsNullOrEmpty(o.EstadoPago) && o.EstadoPago.ToLower().Contains(val)).ToList(),
+                _ => todas.ToList()
             };
         }
+
+        ordenes = ordenes.OrderByDescending(o => o.IdOrden).ToList();
+        StateHasChanged();
     }
+
+
 
     private void IrAIngresarOrden()
     {

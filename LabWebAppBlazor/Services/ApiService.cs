@@ -386,10 +386,5 @@ namespace LabWebAppBlazor.Services
             return await response.Content.ReadFromJsonAsync<IEnumerable<ExamenDto>>() ?? [];
         }
 
-       
-
-
-
-
     }
 }

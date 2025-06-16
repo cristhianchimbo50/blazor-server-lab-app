@@ -1,0 +1,122 @@
+﻿@page "/cuentasporcobrar"
+@rendermode InteractiveServer
+@using LabWebAppBlazor.Models
+@using LabWebAppBlazor.Services
+@using Microsoft.AspNetCore.Components.Authorization
+@using System.Security.Claims;
+
+@inject IApiService ApiService
+@inject AuthenticationStateProvider AuthProvider
+@inject NavigationManager Navigation
+@inject IJSRuntime JS
+
+<h3>Cuentas por Cobrar</h3>
+
+<div class="row mb-3">
+    <div class="col-md-3">
+        <label for="criterio">Buscar por</label>
+        <InputSelect id="criterio" class="form-control" @bind-Value="criterioBusqueda">
+            <option value="">-- Seleccione --</option>
+            <option value="numero">Número de Orden</option>
+            <option value="cedula">Cédula</option>
+            <option value="nombre">Nombre</option>
+        </InputSelect>
+    </div>
+    <div class="col-md-5">
+        <label for="valor">Valor</label>
+        <InputText id="valor" class="form-control" @bind-Value="valorBusqueda" />
+    </div>
+    <div class="col-md-4 mt-4 d-flex gap-2">
+        <button class="btn btn-primary" @onclick="BuscarOrdenes">Buscar</button>
+        <button class="btn btn-secondary" @onclick="LimpiarFiltro">Limpiar</button>
+    </div>
+</div>
+
+@if (ordenesFiltradas == null || ordenesFiltradas.Count == 0)
+{
+    <div class="alert alert-warning">No se encontraron órdenes con saldo pendiente.</div>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table table-bordered table-hover table-striped">
+            <thead class="table-light">
+                <tr>
+                    <th>Número</th>
+                    <th>Cédula</th>
+                    <th>Paciente</th>
+                    <th>Total</th>
+                    <th>Pagado</th>
+                    <th>Saldo</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var orden in ordenesFiltradas)
+                {
+                    <tr>
+                        <td>@orden.NumeroOrden</td>
+                        <td>@orden.CedulaPaciente</td>
+                        <td>@orden.NombrePaciente</td>
+                        <td>@orden.Total.ToString("C")</td>
+                        <td>@orden.TotalPagado.ToString("C")</td>
+                        <td class="fw-bold text-danger">@orden.SaldoPendiente.ToString("C")</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+@code {
+    private List<OrdenDto> todasOrdenes = new();
+    private List<OrdenDto> ordenesFiltradas = new();
+    private string criterioBusqueda = "";
+    private string valorBusqueda = "";
+    private bool _cargado = false;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && !_cargado)
+        {
+            _cargado = true;
+            var todas = await ApiService.GetOrdenesAsync();
+
+            todasOrdenes = todas
+                .Where(o => o.SaldoPendiente > 0)
+                .OrderByDescending(o => o.IdOrden)
+                .ToList();
+
+            ordenesFiltradas = todasOrdenes;
+
+            StateHasChanged();
+        }
+    }
+
+
+
+    private void BuscarOrdenes()
+    {
+        if (string.IsNullOrWhiteSpace(criterioBusqueda) || string.IsNullOrWhiteSpace(valorBusqueda))
+        {
+            ordenesFiltradas = todasOrdenes;
+            return;
+        }
+
+        var valor = valorBusqueda.Trim().ToLower();
+
+        ordenesFiltradas = criterioBusqueda switch
+        {
+            "numero" => todasOrdenes.Where(o => o.NumeroOrden?.ToLower().Contains(valor) ?? false).ToList(),
+            "cedula" => todasOrdenes.Where(o => o.CedulaPaciente?.ToLower().Contains(valor) ?? false).ToList(),
+            "nombre" => todasOrdenes.Where(o => o.NombrePaciente?.ToLower().Contains(valor) ?? false).ToList(),
+            _ => todasOrdenes
+        };
+    }
+
+    private void LimpiarFiltro()
+    {
+        criterioBusqueda = "";
+        valorBusqueda = "";
+        ordenesFiltradas = todasOrdenes;
+    }
+}

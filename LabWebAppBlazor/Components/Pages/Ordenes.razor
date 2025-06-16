@@ -8,6 +8,7 @@
 @inject IApiService ApiService
 @inject AuthenticationStateProvider AuthProvider
 @inject NavigationManager Navigation
+@inject IJSRuntime JS
 
 
 <h3>Gestión de Órdenes</h3>
@@ -62,6 +63,7 @@ else
                     <th>Saldo</th>
                     <th>Estado Pago</th>
                     <th>Estado</th>
+                    <th>Acciones</th>
                 </tr>
             </thead>
             <tbody>
@@ -77,12 +79,172 @@ else
                         <td>@orden.SaldoPendiente.ToString("C")</td>
                         <td>@orden.EstadoPago</td>
                         <td>@(orden.Anulado ? "Anulado" : "Activo")</td>
+                        <td>
+                            <button class="btn btn-sm btn-info" @onclick="() => VerDetalleOrden(orden.IdOrden)">Ver</button>
+                        </td>
+
                     </tr>
                 }
             </tbody>
         </table>
     }
 }
+
+@if (mostrarDetalleOrden && DetalleActual is not null)
+{
+    <div class="modal fade show d-block" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        Detalle de Orden <span class="badge bg-primary">@DetalleActual.NumeroOrden</span>
+                    </h5>
+                    <button class="btn-close" @onclick="ConfirmarCerrarDetalle"></button>
+                </div>
+                <div class="modal-body">
+
+                    @if (DetalleActual.Anulado)
+                    {
+                        <div class="alert alert-danger text-center">
+                            Esta orden ha sido anulada.
+                        </div>
+                    }
+
+                    <div class="row mb-3">
+                        <div class="col-md-3">
+                            <label><strong>Fecha de Orden</strong></label>
+                            <input class="form-control"
+                                   value="@(DateTime.TryParse(DetalleActual.FechaOrden, out var fechaOrden) ? fechaOrden.ToString("dd/MM/yyyy") : "Fecha no disponible")"
+                                   disabled />
+                        </div>
+                        <div class="col-md-3">
+                            <label><strong>Cédula</strong></label>
+                            <input class="form-control" value="@DetalleActual.CedulaPaciente" disabled />
+                        </div>
+                        <div class="col-md-6">
+                            <label><strong>Nombre del Paciente</strong></label>
+                            <input class="form-control" value="@DetalleActual.NombrePaciente" disabled />
+                        </div>
+                        <div class="col-md-6">
+                            <label><strong>Dirección</strong></label>
+                            <input class="form-control" value="@DetalleActual.DireccionPaciente" disabled />
+                        </div>
+                        <div class="col-md-3">
+                            <label><strong>Teléfono</strong></label>
+                            <input class="form-control" value="@DetalleActual.TelefonoPaciente" disabled />
+                        </div>
+                        <div class="col-md-3">
+                            <label><strong>Correo</strong></label>
+                            <input class="form-control" value="@DetalleActual.CorreoPaciente" disabled />
+                        </div>
+                        <div class="col-md-3">
+                            <label><strong>Estado de Pago</strong></label>
+                            <input class="form-control" value="@DetalleActual.EstadoPago" disabled />
+                        </div>
+                    </div>
+
+                    <h5>Exámenes</h5>
+                    <table class="table table-bordered">
+                        <thead>
+                            <tr>
+                                <th>Seleccionar</th>
+                                <th>Nombre del Examen</th>
+                                <th>Estudio</th>
+                                <th>Resultado</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var ex in DetalleActual.Examenes.OrderBy(e => e.NombreEstudio))
+                            {
+                                <tr>
+                                    <td>
+                                        <input type="checkbox"
+                                               @bind="@ex.Seleccionado"
+                                               disabled="@DetalleActual.Anulado" />
+                                    </td>
+                                    <td>@ex.NombreExamen</td>
+                                    <td>@ex.NombreEstudio</td>
+                                    <td>
+                                        @if (ex.IdResultado.HasValue)
+                                        {
+                                            <span class="badge bg-success">@ex.NumeroResultado</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">Pendiente</span>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+
+                    @if (!DetalleActual.Anulado)
+                    {
+                        <div class="d-flex gap-2 mb-3">
+                            <button class="btn btn-success" @onclick="IrAIngresarResultados">
+                                Ingresar Resultados
+                            </button>
+
+                            <button class="btn btn-secondary" @onclick="MostrarTicketPreview">
+                                Imprimir Orden
+                            </button>
+
+                            <button class="btn btn-danger" @onclick="AnularOrden">
+                                Anular Orden
+                            </button>
+
+                            <button class="btn btn-outline-primary" @onclick="VisualizarResultadoPDF">
+                                Imprimir Resultados
+                            </button>
+
+                        </div>
+                    }
+
+
+
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<div style="display:none">
+    <div id="ticketContent">
+        <div style="text-align:center; font-family: monospace;">
+            <h4>LA INMACULADA</h4>
+            <p>LABORATORIO CLÍNICO DE BAJA COMPLEJIDAD</p>
+            <p>Dir: Av. 20 de Diciembre y López de Galarza<br />Guano - Chimborazo</p>
+            <p>Tel: 099 505 5992 / 098 323 9788</p>
+            <h5>TICKET</h5>
+            <p><strong>N°:</strong> @DetalleActual?.IdOrden</p>
+            <p><strong>Fecha:</strong> @DateTime.Now.ToShortDateString()</p>
+            <p><strong>Paciente:</strong> @DetalleActual?.NombrePaciente</p>
+            <p><strong>Cédula:</strong> @DetalleActual?.CedulaPaciente</p>
+            <p><strong>Edad:</strong>  @DateTime.Now.Year - DetalleActual?.FechaNacimiento?.Year años</p>
+            <p><strong>Médico:</strong> PARTICULAR</p>
+
+            <table style="width:100%; font-size:small;">
+                <thead><tr><td><strong>Examen</strong></td><td><strong>Precio</strong></td></tr></thead>
+                <tbody>
+                    @foreach (var ex in DetalleActual?.Examenes ?? new())
+                    {
+                        <tr>
+                            <td>@ex.NombreExamen</td>
+                            <td style="text-align:right;">$5.00</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+
+            <p>Total: <strong>$@DetalleActual?.TotalOrden.ToString("0.00")</strong></p>
+            <p>Pagado: $@DetalleActual?.TotalPagado</p>
+            <p>Saldo: $@DetalleActual?.SaldoPendiente</p>
+            <p>Forma de pago: Efectivo</p>
+            <p>¡Gracias por su preferencia!</p>
+        </div>
+    </div>
+</div>
 
 @code {
     private List<OrdenDto> ordenes = new();
@@ -92,6 +254,8 @@ else
     private bool isRendered = false;
     private bool showContent = false;
     private ClaimsPrincipal? user;
+
+    private ResultadoDetalleDto? DetalleResultado;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -153,6 +317,122 @@ else
     private void IrAIngresarOrden()
     {
         Navigation.NavigateTo("/ordenes/nuevo", forceLoad: true);
+    }
+
+    private OrdenDetalleDto? DetalleActual;
+    private bool mostrarDetalleOrden = false;
+
+    private async Task VerDetalleOrden(int idOrden)
+    {
+        DetalleActual = await ApiService.ObtenerDetalleOrdenAsync(idOrden);
+        mostrarDetalleOrden = true;
+    }
+
+    private async Task ConfirmarCerrarDetalle()
+    {
+        bool confirmado = await JS.InvokeAsync<bool>("confirm", "¿Desea cerrar el detalle?");
+        if (confirmado)
+            mostrarDetalleOrden = false;
+    }
+
+    private async Task ValidarExamenesSeleccionados()
+    {
+        if (DetalleActual is null) return;
+
+        var seleccionados = DetalleActual.Examenes.Where(e => e.Seleccionado).ToList();
+
+        if (!seleccionados.Any())
+        {
+            await JS.InvokeVoidAsync("alert", "Debe seleccionar al menos un examen.");
+            return;
+        }
+
+        var estudio = seleccionados.First().NombreEstudio;
+
+        if (seleccionados.Any(e => e.NombreEstudio != estudio))
+        {
+            await JS.InvokeVoidAsync("alert", "Todos los exámenes seleccionados deben pertenecer al mismo estudio.");
+            return;
+        }
+
+        await JS.InvokeVoidAsync("alert", "Exámenes válidos....");
+    }
+
+    private async Task MostrarTicketPreview()
+    {
+        await JS.InvokeVoidAsync("imprimirTicket");
+    }
+
+    private async Task AnularOrden()
+    {
+        if (DetalleActual is null) return;
+
+        bool confirmar = await JS.InvokeAsync<bool>("confirm", "¿Está seguro que desea anular esta orden?");
+        if (!confirmar) return;
+
+        var response = await ApiService.AnularOrdenAsync(DetalleActual.IdOrden);
+
+        if (response.IsSuccessStatusCode)
+        {
+            await JS.InvokeVoidAsync("alert", "Orden anulada correctamente.");
+            await CargarOrdenes();
+            mostrarDetalleOrden = false;
+        }
+        else
+        {
+            await JS.InvokeVoidAsync("alert", "Error al anular la orden.");
+        }
+    }
+
+    private async Task IrAIngresarResultados()
+    {
+        if (DetalleActual is null) return;
+
+        var seleccionados = DetalleActual.Examenes.Where(e => e.Seleccionado).ToList();
+
+        if (!seleccionados.Any())
+        {
+            await JS.InvokeVoidAsync("alert", "Debe seleccionar al menos un examen.");
+            return;
+        }
+
+        var primerEstudio = seleccionados.First().NombreEstudio;
+
+        if (seleccionados.Any(e => e.NombreEstudio != primerEstudio))
+        {
+            await JS.InvokeVoidAsync("alert", "Todos los exámenes seleccionados deben pertenecer al mismo estudio.");
+            return;
+        }
+
+        var query = string.Join("&", seleccionados.Select(e => $"idsExamenes={e.IdExamen}"));
+        Navigation.NavigateTo($"/resultados/ingresar?idOrden={DetalleActual.IdOrden}&{query}");
+    }
+
+    private async Task VisualizarResultadoPDF()
+    {
+        if (DetalleResultado == null || DetalleResultado.Examenes.Any(e => e.Valor == 0))
+        {
+            await JS.InvokeVoidAsync("alert", "PDF.");
+            return;
+        }
+
+        var resultadoObj = new
+        {
+            NumeroResultado = DetalleResultado.NumeroResultado,
+            NombrePaciente = DetalleResultado.NombrePaciente,
+            CedulaPaciente = DetalleResultado.CedulaPaciente,
+            FechaResultado = DetalleResultado.FechaResultado,
+            Observaciones = DetalleResultado.Examenes.FirstOrDefault()?.Observacion,
+            Examenes = DetalleResultado.Examenes.Select(e => new
+            {
+                NombreExamen = e.NombreExamen,
+                Valor = e.Valor,
+                Unidad = e.Unidad,
+                ValorReferencia = e.ValorReferencia
+            }).ToList()
+        };
+
+        await JS.InvokeVoidAsync("imprimirResultados", resultadoObj);
     }
 
 }

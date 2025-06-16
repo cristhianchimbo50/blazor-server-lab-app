@@ -3,6 +3,7 @@ using LabWebAppBlazor.Models;
 using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage;
 using System.Net.Http.Headers;
 
+
 namespace LabWebAppBlazor.Services
 {
     public class ApiService : IApiService
@@ -299,6 +300,7 @@ namespace LabWebAppBlazor.Services
             return await response.Content.ReadFromJsonAsync<IEnumerable<ExamenDto>>() ?? [];
         }
 
+
         // Agregar hijo (relación padre-hijo)
         public async Task<HttpResponseMessage> AgregarExamenHijoAsync(int idPadre, int idHijo)
         {
@@ -385,6 +387,149 @@ namespace LabWebAppBlazor.Services
 
             return await response.Content.ReadFromJsonAsync<IEnumerable<ExamenDto>>() ?? [];
         }
+
+        public async Task<OrdenDetalleDto?> ObtenerDetalleOrdenAsync(int id)
+        {
+            var request = new HttpRequestMessage(HttpMethod.Get, $"ordenes/detalle/{id}");
+
+            if (!await AttachTokenAsync(request))
+            {
+                Console.WriteLine("❌ No se pudo adjuntar el token");
+                return null;
+            }
+
+            var response = await _http.SendAsync(request);
+            if (!response.IsSuccessStatusCode)
+            {
+                Console.WriteLine($"❌ Error HTTP: {response.StatusCode}");
+                return null;
+            }
+
+            return await response.Content.ReadFromJsonAsync<OrdenDetalleDto>();
+        }
+
+
+
+        public async Task<HttpResponseMessage> AnularOrdenAsync(int idOrden)
+        {
+            var request = new HttpRequestMessage(HttpMethod.Put, $"ordenes/anular/{idOrden}");
+
+            if (!await AttachTokenAsync(request))
+                return new HttpResponseMessage(System.Net.HttpStatusCode.Unauthorized);
+
+            return await _http.SendAsync(request);
+        }
+
+        // Buscar médicos
+        public async Task<List<MedicoDto>> BuscarMedicosAsync(string criterio, string valor)
+        {
+            var url = $"medicos/buscar?criterio={Uri.EscapeDataString(criterio)}&valor={Uri.EscapeDataString(valor)}";
+            var request = new HttpRequestMessage(HttpMethod.Get, url);
+
+            if (!await AttachTokenAsync(request))
+                return new List<MedicoDto>();
+
+            var response = await _http.SendAsync(request);
+            if (!response.IsSuccessStatusCode)
+                return new List<MedicoDto>();
+
+            return await response.Content.ReadFromJsonAsync<List<MedicoDto>>() ?? new();
+        }
+
+        // Editar médico
+        public async Task<HttpResponseMessage> EditarMedicoAsync(int id, MedicoDto medico)
+        {
+            var request = new HttpRequestMessage(HttpMethod.Put, $"medicos/{id}")
+            {
+                Content = JsonContent.Create(medico)
+            };
+
+            if (!await AttachTokenAsync(request))
+                return new HttpResponseMessage(System.Net.HttpStatusCode.Unauthorized);
+
+            return await _http.SendAsync(request);
+        }
+
+        // Anular médico
+        public async Task<HttpResponseMessage> AnularMedicoAsync(int id)
+        {
+            var request = new HttpRequestMessage(HttpMethod.Delete, $"medicos/{id}");
+
+            if (!await AttachTokenAsync(request))
+                return new HttpResponseMessage(System.Net.HttpStatusCode.Unauthorized);
+
+            return await _http.SendAsync(request);
+        }
+
+        // Obtener médico por ID
+        public async Task<MedicoDto?> ObtenerMedicoPorIdAsync(int id)
+        {
+            var request = new HttpRequestMessage(HttpMethod.Get, $"medicos/{id}");
+
+            if (!await AttachTokenAsync(request))
+                return null;
+
+            var response = await _http.SendAsync(request);
+
+            if (!response.IsSuccessStatusCode)
+                return null;
+
+            return await response.Content.ReadFromJsonAsync<MedicoDto>();
+        }
+
+        // Resultados
+        public async Task<IEnumerable<ResultadoDto>> GetResultadosAsync()
+        {
+            var request = new HttpRequestMessage(HttpMethod.Get, "resultados");
+
+            if (!await AttachTokenAsync(request))
+                return Enumerable.Empty<ResultadoDto>();
+
+            var response = await _http.SendAsync(request);
+            if (!response.IsSuccessStatusCode)
+                return Enumerable.Empty<ResultadoDto>();
+
+            return await response.Content.ReadFromJsonAsync<IEnumerable<ResultadoDto>>() ?? [];
+        }
+
+        public async Task<ResultadoDetalleDto?> ObtenerDetalleResultadoAsync(int id)
+        {
+            var request = new HttpRequestMessage(HttpMethod.Get, $"resultados/detalle/{id}");
+
+            if (!await AttachTokenAsync(request))
+                return null;
+
+            var response = await _http.SendAsync(request);
+
+            if (!response.IsSuccessStatusCode)
+                return null;
+
+            return await response.Content.ReadFromJsonAsync<ResultadoDetalleDto>();
+        }
+
+        public async Task<HttpResponseMessage> GuardarResultadosAsync(ResultadoGuardarDto dto)
+        {
+            var request = new HttpRequestMessage(HttpMethod.Post, "resultados/guardar-completo")
+            {
+                Content = JsonContent.Create(dto)
+            };
+
+            if (!await AttachTokenAsync(request))
+                return new HttpResponseMessage(System.Net.HttpStatusCode.Unauthorized);
+
+            return await _http.SendAsync(request);
+        }
+
+        public async Task<HttpResponseMessage> AnularResultadoAsync(int idResultado)
+        {
+            var request = new HttpRequestMessage(HttpMethod.Put, $"resultados/anular/{idResultado}");
+
+            if (!await AttachTokenAsync(request))
+                return new HttpResponseMessage(System.Net.HttpStatusCode.Unauthorized);
+
+            return await _http.SendAsync(request);
+        }
+
 
     }
 }

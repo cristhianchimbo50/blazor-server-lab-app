@@ -1,4 +1,4 @@
-﻿<div class="top-row ps-3 navbar navbar-dark">
+﻿﻿<div class="top-row ps-3 navbar navbar-dark">
     <div class="container-fluid">
         <a class="navbar-brand" href="">LabWebAppBlazor</a>
     </div>
@@ -8,7 +8,6 @@
 
 <div class="nav-scrollable" onclick="document.querySelector('.navbar-toggler').click()">
     <nav class="flex-column">
-        
         <div class="nav-item px-3">
             <NavLink class="nav-link" href="home" Match="NavLinkMatch.All">
                 <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> Home
@@ -28,6 +27,12 @@
         </div>
 
         <div class="nav-item px-3">
+            <NavLink class="nav-link" href="medicos" Match="NavLinkMatch.All">
+                <span class="bi bi-list-nested-nav-menu oi oi-people" aria-hidden="true"></span> Medicos
+            </NavLink>
+        </div>
+
+        <div class="nav-item px-3">
             <NavLink class="nav-link" href="examenes" Match="NavLinkMatch.All">
                 <span class="bi bi-list-nested-nav-menu oi oi-people" aria-hidden="true"></span> Exámenes
             </NavLink>
@@ -38,12 +43,17 @@
                 <span class="bi bi-list-nested-nav-menu oi oi-people" aria-hidden="true"></span> Ordenes
             </NavLink>
         </div>
-        
+
         <div class="nav-item px-3">
-            <NavLink class="nav-link" href="cxc" Match="NavLinkMatch.All"> @* ojoo cambiar pa la CXC *@
+            <NavLink class="nav-link" href="resultados" Match="NavLinkMatch.All">
+                <span class="bi bi-list-nested-nav-menu oi oi-people" aria-hidden="true"></span> Resultados
+            </NavLink>
+        </div>
+
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="cuentasporcobrar" Match="NavLinkMatch.All">
                 <span class="bi bi-list-nested-nav-menu oi oi-people" aria-hidden="true"></span> Cuentas por Cobrar
             </NavLink>
         </div>
     </nav>
 </div>
-

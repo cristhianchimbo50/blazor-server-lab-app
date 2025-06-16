@@ -1,0 +1,206 @@
+﻿@page "/resultados/ingresar"
+@rendermode InteractiveServer
+@using LabWebAppBlazor.Models
+@using LabWebAppBlazor.Services
+@using Microsoft.AspNetCore.Components.Authorization
+@using System.Security.Claims
+
+@inject IApiService ApiService
+@inject AuthenticationStateProvider AuthProvider
+@inject NavigationManager Navigation
+@inject IJSRuntime JS
+@inject NavigationManager navManager
+
+@code {
+    [Parameter] public int idOrden { get; set; }
+    [Parameter] public List<int> idsExamenes { get; set; } = new();
+
+    private OrdenDetalleDto? DatosOrden;
+    private List<ExamenDto> ExamenesSeleccionados = new();
+    private Dictionary<int, string> ValoresIngresados = new();
+    private Dictionary<int, string> ObservacionesIngresadas = new();
+
+
+    private DateTime fechaResultado = DateTime.Today;
+    private string fechaResultadoStr
+    {
+        get => fechaResultado.ToString("yyyy-MM-dd");
+        set => fechaResultado = DateTime.TryParse(value, out var fecha) ? fecha : DateTime.Today;
+    }
+
+    private bool cargando = true;
+
+    private bool yaRenderizado = false;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await InicializarDatos();
+            yaRenderizado = true;
+            StateHasChanged();
+        }
+    }
+
+    private async Task InicializarDatos()
+    {
+        var uri = navManager.ToAbsoluteUri(Navigation.Uri);
+        var query = Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(uri.Query);
+
+        if (query.TryGetValue("idOrden", out var idOrdenStr))
+        {
+            idOrden = int.TryParse(idOrdenStr, out var parsedId) ? parsedId : 0;
+        }
+
+
+        if (query.TryGetValue("idsExamenes", out var ids))
+        {
+            idsExamenes = ids.Select(int.Parse).ToList();
+        }
+
+        DatosOrden = await ApiService.ObtenerDetalleOrdenAsync(idOrden);
+        if (DatosOrden is null)
+        {
+            return;
+        }
+
+        var todos = (await ApiService.GetExamenesAsync()).ToList();
+        var hijosPorAgregar = new List<ExamenDto>();
+        var idsIncluidos = new HashSet<int>();
+
+        foreach (var idPadre in idsExamenes)
+        {
+            var hijos = (await ApiService.ObtenerHijosDeExamenAsync(idPadre)).ToList();
+            foreach (var hijo in hijos)
+            {
+                if (!idsIncluidos.Contains(hijo.IdExamen))
+                {
+                    hijosPorAgregar.Add(hijo);
+                    idsIncluidos.Add(hijo.IdExamen);
+                }
+            }
+        }
+
+        ExamenesSeleccionados = hijosPorAgregar;
+
+        foreach (var ex in ExamenesSeleccionados)
+        {
+            if (!ValoresIngresados.ContainsKey(ex.IdExamen))
+                ValoresIngresados[ex.IdExamen] = string.Empty;
+
+            if (!ObservacionesIngresadas.ContainsKey(ex.IdExamen))
+                ObservacionesIngresadas[ex.IdExamen] = string.Empty;
+        }
+
+        cargando = false;
+    }
+
+
+
+
+    private async Task GuardarResultados()
+    {
+        var resultados = ExamenesSeleccionados.Select(ex => new ResultadoExamenDto
+            {
+                IdExamen = ex.IdExamen,
+                Valor = decimal.TryParse(ValoresIngresados.GetValueOrDefault(ex.IdExamen), out var v) ? v : 0,
+                Unidad = ex.Unidad,
+                Observacion = ObservacionesIngresadas.GetValueOrDefault(ex.IdExamen)
+            }).ToList();
+
+        var dto = new ResultadoGuardarDto
+            {
+                IdOrden = idOrden,
+                IdPaciente = DatosOrden.IdPaciente,
+                FechaResultado = fechaResultado,
+                IdMedico = DatosOrden.IdMedico,
+                Examenes = resultados,
+                ObservacionesGenerales = observacionesGenerales
+            };
+
+
+        var response = await ApiService.GuardarResultadosAsync(dto);
+
+        if (response.IsSuccessStatusCode)
+        {
+            await JS.InvokeVoidAsync("alert", "Resultado guardado correctamente.");
+            Navigation.NavigateTo("/resultados");
+        }
+        else
+        {
+            await JS.InvokeVoidAsync("alert", "Error al guardar el resultado.");
+        }
+    }
+
+    private string observacionesGenerales = "";
+}
+
+@if (cargando || !yaRenderizado)
+{
+    <p>Cargando datos...</p>
+}
+else if (DatosOrden == null)
+{
+    <div class="alert alert-danger">No se pudo cargar la orden.</div>
+}
+else
+{
+    <div class="container">
+        <h4>Ingresar Resultados</h4>
+
+        <div class="row mb-3">
+            <div class="col-md-4">
+                <label><strong>Cédula</strong></label>
+                <input class="form-control" value="@DatosOrden.CedulaPaciente" disabled />
+            </div>
+            <div class="col-md-4">
+                <label><strong>Nombre</strong></label>
+                <input class="form-control" value="@DatosOrden.NombrePaciente" disabled />
+            </div>
+            <div class="col-md-4">
+                <label><strong>Fecha Resultado</strong></label>
+                <input type="date" class="form-control" @bind="fechaResultado" />
+            </div>
+
+            <div class="col-md-4">
+                <label><strong>Médico</strong></label>
+                <input class="form-control" value="@DatosOrden.NombreMedico" disabled />
+            </div>
+
+        </div>
+
+        <h5>Exámenes Seleccionados</h5>
+        <table class="table table-bordered table-sm">
+            <thead class="table-light">
+                <tr>
+                    <th>Examen</th>
+                    <th>Valor</th>
+                    <th>Unidad</th>
+                    <th>Valor de Referencia</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var ex in ExamenesSeleccionados)
+                {
+                    <tr>
+                        <td>@ex.NombreExamen</td>
+                        <td>
+                            <input type="text" class="form-control"
+                                   @bind="ValoresIngresados[ex.IdExamen]" />
+                        </td>
+                        <td>@ex.Unidad</td>
+                        <td>@ex.ValorReferencia</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+
+        <div class="mb-3">
+            <label><strong>Observaciones Generales</strong></label>
+            <textarea class="form-control" rows="3" @bind="observacionesGenerales"></textarea>
+        </div>
+
+        <button class="btn btn-primary" @onclick="GuardarResultados">Guardar Resultado</button>
+<button class="btn btn-secondary ms-2" @onclick="@(() => Navigation.NavigateTo("/ordenes"))">Cancelar</button>
+    </div>
+}

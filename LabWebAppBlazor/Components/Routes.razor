@@ -50,7 +50,7 @@
     private Type GetLayout(RouteData routeData)
     {
         var pageType = routeData.PageType;
-        if (pageType == typeof(Login)) // Asegúrate que "Login" esté correctamente importado
+        if (pageType == typeof(Login))
         {
             return typeof(EmptyLayout);
         }

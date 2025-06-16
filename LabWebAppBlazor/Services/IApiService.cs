@@ -48,5 +48,21 @@ namespace LabWebAppBlazor.Services
 
         Task<IEnumerable<ExamenDto>> BuscarExamenesAsync(string campo, string valor);
 
+        Task<OrdenDetalleDto?> ObtenerDetalleOrdenAsync(int id);
+
+        Task<HttpResponseMessage> AnularOrdenAsync(int idOrden);
+
+        //medico
+        Task<List<MedicoDto>> BuscarMedicosAsync(string criterio, string valor);
+        Task<HttpResponseMessage> EditarMedicoAsync(int id, MedicoDto medico);
+        Task<HttpResponseMessage> AnularMedicoAsync(int id);
+        Task<MedicoDto?> ObtenerMedicoPorIdAsync(int id);
+
+        // Resultados
+        Task<IEnumerable<ResultadoDto>> GetResultadosAsync();
+        Task<ResultadoDetalleDto?> ObtenerDetalleResultadoAsync(int id);
+        Task<HttpResponseMessage> GuardarResultadosAsync(ResultadoGuardarDto dto);
+        Task<HttpResponseMessage> AnularResultadoAsync(int idResultado);
+
     }
 }

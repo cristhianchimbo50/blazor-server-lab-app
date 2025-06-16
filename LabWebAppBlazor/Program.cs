@@ -11,7 +11,7 @@ builder.Services.AddRazorComponents()
 
 builder.Services.AddHttpClient("Api", client =>
 {
-    client.BaseAddress = new Uri("https://localhost:7114/api/");
+    client.BaseAddress = new Uri("http://localhost:5077/api/");
 });
 
 builder.Services.AddScoped<ProtectedSessionStorage>();

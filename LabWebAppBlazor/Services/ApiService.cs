@@ -628,6 +628,19 @@ namespace LabWebAppBlazor.Services
             return await _http.SendAsync(request);
         }
 
+        public async Task<HttpResponseMessage> RegistrarMovimientosAsync(List<MovimientoReactivoDto> movimientos)
+        {
+            var request = new HttpRequestMessage(HttpMethod.Post, "movimientosreactivos/lote")
+            {
+                Content = JsonContent.Create(movimientos)
+            };
+
+            if (!await AttachTokenAsync(request))
+                return new HttpResponseMessage(System.Net.HttpStatusCode.Unauthorized);
+
+            return await _http.SendAsync(request);
+        }
+
 
     }
 }

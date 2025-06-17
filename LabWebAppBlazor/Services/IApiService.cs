@@ -75,6 +75,7 @@ namespace LabWebAppBlazor.Services
         Task<bool> EditarReactivoAsync(int id, ReactivoDto dto);
         Task<HttpResponseMessage> AnularReactivoAsync(int id);
 
+        Task<HttpResponseMessage> RegistrarMovimientosAsync(List<MovimientoReactivoDto> movimientos);
 
     }
 }

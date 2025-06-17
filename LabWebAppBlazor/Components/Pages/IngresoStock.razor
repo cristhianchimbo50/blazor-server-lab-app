@@ -1,0 +1,169 @@
+﻿@page "/ingreso-stock"
+@rendermode InteractiveServer
+@using LabWebAppBlazor.Models
+@using LabWebAppBlazor.Services
+@using Microsoft.AspNetCore.Components.Authorization
+@using System.Security.Claims;
+
+
+@inject IApiService ApiService
+@inject AuthenticationStateProvider AuthProvider
+@inject NavigationManager Navigation
+@inject IJSRuntime JS
+
+
+<h3 class="mb-3">Ingreso de Stock</h3>
+
+<div class="mb-3">
+    <label>Fecha de Ingreso</label>
+    <InputDate class="form-control" @bind-Value="fechaIngreso" />
+</div>
+
+<div class="row">
+    <div class="col-md-6">
+        <h5>Reactivos disponibles</h5>
+        <div class="table-responsive" style="max-height: 300px; overflow-y: auto;">
+            <table class="table table-bordered table-sm table-hover">
+                <thead class="table-light">
+                    <tr>
+                        <th>Nombre</th>
+                        <th>Fabricante</th>
+                        <th>Unidad</th>
+                        <th class="text-end">Stock</th>
+                        <th class="text-center">Seleccionado</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var r in todosReactivos)
+                    {
+                        <tr @ondblclick="() => SeleccionarReactivo(r)">
+                            <td>@r.NombreReactivo</td>
+                            <td>@r.Fabricante</td>
+                            <td>@r.Unidad</td>
+                            <td class="text-end">@r.CantidadDisponible.ToString("N2")</td>
+                            <td class="text-center">
+                                @(reactivosSeleccionados.Any(x => x.IdReactivo == r.IdReactivo) ? "Sí" : "")
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <h5>Reactivos seleccionados para ingreso</h5>
+        <div class="table-responsive">
+            <table class="table table-bordered table-sm">
+                <thead class="table-light">
+                    <tr>
+                        <th>Nombre</th>
+                        <th>Cantidad a Ingresar</th>
+                        <th>Unidad</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var r in reactivosSeleccionados)
+                    {
+                        <tr>
+                            <td>@r.NombreReactivo</td>
+                            <td>
+                                <InputNumber class="form-control form-control-sm"
+                                             @bind-Value="r.Cantidad"
+                                             Min="0.01" Step="0.01" />
+                            </td>
+                            <td>@r.Unidad</td>
+                            <td>
+                                <button class="btn btn-sm btn-outline-danger"
+                                        @onclick="() => QuitarReactivo(r.IdReactivo)">
+                                    <i class="bi bi-x-lg"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="mt-4">
+    <button class="btn btn-primary" @onclick="GuardarMovimientosAsync" disabled="@(!reactivosSeleccionados.Any())">
+        Guardar Ingresos
+    </button>
+</div>
+
+@code {
+    private List<ReactivoDto> todosReactivos = new();
+    private List<MovimientoReactivoDto> reactivosSeleccionados = new();
+    private DateTime fechaIngreso = DateTime.Now;
+
+    private bool datosCargados = false;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && !datosCargados)
+        {
+            datosCargados = true;
+            var lista = await ApiService.GetReactivosAsync();
+            todosReactivos = lista.OrderBy(r => r.NombreReactivo).ToList();
+            StateHasChanged();
+        }
+    }
+
+
+    private void SeleccionarReactivo(ReactivoDto reactivo)
+    {
+        if (!reactivosSeleccionados.Any(r => r.IdReactivo == reactivo.IdReactivo))
+        {
+            reactivosSeleccionados.Add(new MovimientoReactivoDto
+                {
+                    IdReactivo = reactivo.IdReactivo,
+                    NombreReactivo = reactivo.NombreReactivo,
+                    Unidad = reactivo.Unidad,
+                    Cantidad = 0,
+                    FechaMovimiento = fechaIngreso
+                });
+        }
+    }
+
+    private void QuitarReactivo(int id)
+    {
+        var reactivo = reactivosSeleccionados.FirstOrDefault(r => r.IdReactivo == id);
+        if (reactivo is not null)
+        {
+            reactivosSeleccionados.Remove(reactivo);
+        }
+    }
+
+    private async Task GuardarMovimientosAsync()
+    {
+        if (reactivosSeleccionados.Any(r => r.Cantidad <= 0))
+        {
+            await JS.InvokeVoidAsync("alert", "Todas las cantidades deben ser mayores a cero.");
+            return;
+        }
+
+        foreach (var mov in reactivosSeleccionados)
+        {
+            mov.TipoMovimiento = "INGRESO";
+            mov.Observacion = "Ingreso manual de stock";
+            mov.Cantidad = mov.Cantidad;
+        }
+
+        var result = await ApiService.RegistrarMovimientosAsync(reactivosSeleccionados);
+
+        if (result.IsSuccessStatusCode)
+        {
+            await JS.InvokeVoidAsync("alert", "Stock ingresado correctamente.");
+            reactivosSeleccionados.Clear();
+            var lista = await ApiService.GetReactivosAsync();
+            todosReactivos = lista.OrderBy(r => r.NombreReactivo).ToList();
+        }
+        else
+        {
+            await JS.InvokeVoidAsync("alert", "Error al guardar los ingresos.");
+        }
+    }
+}

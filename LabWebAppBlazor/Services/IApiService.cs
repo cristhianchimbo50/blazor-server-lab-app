@@ -64,5 +64,9 @@ namespace LabWebAppBlazor.Services
         Task<HttpResponseMessage> GuardarResultadosAsync(ResultadoGuardarDto dto);
         Task<HttpResponseMessage> AnularResultadoAsync(int idResultado);
 
+        Task<IEnumerable<DetallePagoDto>> GetPagosPorOrdenAsync(int idOrden);
+
+        Task<HttpResponseMessage> RegistrarPagoAsync(PagoDto pago);
+
     }
 }

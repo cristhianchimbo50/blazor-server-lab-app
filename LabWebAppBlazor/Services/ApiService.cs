@@ -530,6 +530,33 @@ namespace LabWebAppBlazor.Services
             return await _http.SendAsync(request);
         }
 
+        public async Task<IEnumerable<DetallePagoDto>> GetPagosPorOrdenAsync(int idOrden)
+        {
+            var request = new HttpRequestMessage(HttpMethod.Get, $"pagos/orden/{idOrden}");
+
+            if (!await AttachTokenAsync(request))
+                return Enumerable.Empty<DetallePagoDto>();
+
+            var response = await _http.SendAsync(request);
+
+            if (!response.IsSuccessStatusCode)
+                return Enumerable.Empty<DetallePagoDto>();
+
+            return await response.Content.ReadFromJsonAsync<IEnumerable<DetallePagoDto>>() ?? [];
+        }
+
+        public async Task<HttpResponseMessage> RegistrarPagoAsync(PagoDto pago)
+        {
+            var request = new HttpRequestMessage(HttpMethod.Post, "pagos/registrar")
+            {
+                Content = JsonContent.Create(pago)
+            };
+
+            if (!await AttachTokenAsync(request))
+                return new HttpResponseMessage(System.Net.HttpStatusCode.Unauthorized);
+
+            return await _http.SendAsync(request);
+        }
 
     }
 }

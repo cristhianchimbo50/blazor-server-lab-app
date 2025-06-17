@@ -48,6 +48,7 @@ else
                     <th>Total</th>
                     <th>Pagado</th>
                     <th>Saldo</th>
+                    <th>Acciones</th>
                 </tr>
             </thead>
             <tbody>
@@ -60,9 +61,16 @@ else
                         <td>@orden.Total.ToString("C")</td>
                         <td>@orden.TotalPagado.ToString("C")</td>
                         <td class="fw-bold text-danger">@orden.SaldoPendiente.ToString("C")</td>
+                        <td>
+                            <button class="btn btn-sm btn-success"
+                                    @onclick="@(() => IrACobro(orden.CedulaPaciente))">
+                                <i class="bi bi-cash-coin"></i> Cobrar
+                            </button>
+                        </td>
                     </tr>
                 }
             </tbody>
+
         </table>
     </div>
 }
@@ -119,4 +127,13 @@ else
         valorBusqueda = "";
         ordenesFiltradas = todasOrdenes;
     }
+
+    private void IrACobro(string? cedula)
+    {
+        if (!string.IsNullOrWhiteSpace(cedula))
+        {
+            Navigation.NavigateTo($"/cobros/{cedula}");
+        }
+    }
+
 }

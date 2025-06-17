@@ -241,7 +241,7 @@ else
                         </div>
                         <div class="mb-2">
                             <label>Observaciones</label>
-                            <InputTextArea class="form-control" @bind-Value="Pago.Observaciones" />
+                            <InputTextArea class="form-control" @bind-Value="Pago.Observacion" />
                         </div>
                     </div>
                     <div class="modal-footer">
@@ -572,13 +572,13 @@ else
                     IdPaciente = PacienteActual.IdPaciente,
                     IdMedico = MedicoActual.IdMedico,
                     IdUsuario = idUsuario,
-                    Observacion = Pago.Observaciones,
+                    Observacion = Pago.Observacion,
                     FechaOrden = FechaOrdenSeleccionada
                 },
                 IdsExamenes = ExamenesSeleccionados.Select(e => e.IdExamen).ToList(),
                 DineroEfectivo = Pago.DineroEfectivo,
                 Transferencia = Pago.Transferencia,
-                Observaciones = Pago.Observaciones
+                Observaciones = Pago.Observacion
             };
 
 

@@ -1,0 +1,319 @@
+﻿@page "/cobros/{cedula}"
+@rendermode InteractiveServer
+@using LabWebAppBlazor.Models
+@using LabWebAppBlazor.Services
+@using Microsoft.AspNetCore.Components.Authorization
+@using System.Security.Claims;
+
+@inject IApiService ApiService
+@inject AuthenticationStateProvider AuthProvider
+@inject NavigationManager Navigation
+@inject IJSRuntime JS
+
+
+<h4 class="text-center mb-4 text-uppercase fw-bold border-bottom pb-2">Cobros de Pacientes</h4>
+
+@if (ordenesPorCobrar is null)
+{
+    <div class="alert alert-info">Cargando órdenes del paciente...</div>
+}
+else
+{
+    <div class="row">
+        <div class="col-md-6">
+            <label><strong>Cédula del Paciente:</strong></label>
+            
+            <input class="form-control mb-2" value="@cedula" disabled />
+
+            <label><strong>Nombre del Paciente:</strong></label>
+            <input class="form-control mb-2" value="@nombrePaciente" disabled />
+
+            <h5>Detalle de Cuentas por Cobrar:</h5>
+            <div class="table-responsive" style="max-height: 300px; overflow-y: auto;">
+                <table class="table table-bordered table-sm table-hover">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Número</th>
+                            <th>Fecha</th>
+                            <th>Total</th>
+                            <th>Pagado</th>
+                            <th>Saldo</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var orden in ordenesPorCobrar)
+                        {
+                            <tr @ondblclick="@(() => SeleccionarOrden(orden))">
+                                <td>@orden.NumeroOrden</td>
+                                <td>@orden.FechaOrden.ToShortDateString()</td>
+                                <td>@orden.Total.ToString("C")</td>
+                                <td>@orden.TotalPagado.ToString("C")</td>
+                                <td class="text-danger fw-bold">@orden.SaldoPendiente.ToString("C")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <h5>Órdenes Pendientes:</h5>
+            <div class="table-responsive" style="max-height: 200px; overflow-y: auto;">
+                <table class="table table-bordered table-sm table-hover">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Número</th>
+                            <th>Saldo</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var orden in ordenesSeleccionadas)
+                        {
+                            <tr @ondblclick="@(() => QuitarOrden(orden))">
+                                <td>@orden.NumeroOrden</td>
+                                <td>@orden.SaldoPendiente.ToString("C")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            <h5 class="mt-3">Pagos Recibidos:</h5>
+            <div class="table-responsive" style="max-height: 200px; overflow-y: auto;">
+                <table class="table table-bordered table-sm table-striped">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Fecha</th>
+                            <th>Tipo</th>
+                            <th>Monto</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var pago in pagosPrevios)
+                        {
+                            <tr>
+                                <td>@pago.FechaPago?.ToString("dd/MM/yyyy")</td>
+                                <td>@pago.TipoPago</td>
+                                <td>@pago.Monto?.ToString("C")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <hr />
+
+    <div class="row mt-3">
+        <div class="col-md-4">
+            <label><strong>Total Deuda:</strong></label>
+            <input class="form-control" value="@totalDeuda.ToString("C")" disabled />
+        </div>
+        <div class="col-md-4">
+            <label><strong>Total Pagos:</strong></label>
+            <input class="form-control" value="@totalPagos.ToString("C")" disabled />
+        </div>
+        <div class="col-md-4">
+            <label><strong>Total Saldo:</strong></label>
+            <input class="form-control" value="@totalSaldoSeleccionado.ToString("C")" disabled />
+        </div>
+    </div>
+
+    <div class="text-end mt-4 d-flex justify-content-end gap-3">
+        <button class="btn btn-success" @onclick="MostrarModalCobro" disabled="@(ordenesSeleccionadas.Count == 0)">
+            <i class="bi bi-cash-coin"></i> Cobrar
+        </button>
+
+
+        <button class="btn btn-outline-secondary" @onclick="IrACuentasPorCobrar">
+            <i class="bi bi-arrow-return-left"></i> Salir
+        </button>
+    </div>
+}
+
+@if (mostrarModalCobro)
+{
+    <div class="modal fade show d-block" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Registrar Cobro</h5>
+                    <button type="button" class="btn-close" @onclick="CerrarModalCobro"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-2">
+                        <label>Dinero Efectivo</label>
+                        <InputNumber class="form-control" @bind-Value="dineroEfectivo" />
+                    </div>
+                    <div class="mb-2">
+                        <label>Transferencia</label>
+                        <InputNumber class="form-control" @bind-Value="transferencia" />
+                    </div>
+
+                    <div class="mt-3">
+                        <p><strong>Total Cobro:</strong> @totalCobro.ToString("C")</p>
+                        <p><strong>Total Saldo:</strong> @totalSaldoSeleccionado.ToString("C")</p>
+                        <p>
+                            <strong>Total Restante:</strong>
+                            <span class="@( (totalSaldoSeleccionado - totalCobro) > 0 ? "text-danger fw-bold" : "")">
+                                @((totalSaldoSeleccionado - totalCobro).ToString("C"))
+                            </span>
+                        </p>
+
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-primary" @onclick="RegistrarCobroAsync">Cobrar</button>
+                    <button class="btn btn-secondary" @onclick="CerrarModalCobro">Cancelar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+
+@code {
+    [Parameter] public string cedula { get; set; } = string.Empty;
+    private string nombrePaciente = string.Empty;
+
+
+    private List<OrdenDto> ordenesPorCobrar = new();
+    private List<OrdenDto> ordenesSeleccionadas = new();
+    private List<DetallePagoDto> pagosPrevios = new();
+
+
+    private decimal totalDeuda = 0;
+    private decimal totalPagos = 0;
+    private decimal totalSaldoSeleccionado = 0;
+
+
+    private bool datosCargados = false;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && !datosCargados)
+        {
+            datosCargados = true;
+
+            var ordenes = await ApiService.GetOrdenesAsync();
+
+            ordenesPorCobrar = ordenes
+                .Where(o => o.CedulaPaciente == cedula && o.SaldoPendiente > 0 && !o.Anulado)
+                .ToList();
+
+            if (ordenesPorCobrar.Any())
+            {
+                nombrePaciente = ordenesPorCobrar.First().NombrePaciente;
+            }
+
+            totalDeuda = ordenesPorCobrar.Sum(o => o.SaldoPendiente);
+
+            StateHasChanged();
+        }
+    }
+
+
+    private async Task CargarPagosAsync()
+    {
+        pagosPrevios.Clear();
+        foreach (var orden in ordenesSeleccionadas)
+        {
+            var pagos = await ApiService.GetPagosPorOrdenAsync(orden.IdOrden);
+            pagosPrevios.AddRange(pagos);
+        }
+
+        totalPagos = pagosPrevios.Sum(p => p.Monto ?? 0);
+    }
+
+    private async void SeleccionarOrden(OrdenDto orden)
+    {
+        if (!ordenesSeleccionadas.Any(o => o.IdOrden == orden.IdOrden))
+        {
+            ordenesSeleccionadas.Add(orden);
+            ordenesPorCobrar.Remove(orden);
+            await CargarPagosAsync();
+            CalcularSaldoSeleccionado();
+            StateHasChanged();
+        }
+    }
+
+    private async void QuitarOrden(OrdenDto orden)
+    {
+        ordenesPorCobrar.Add(orden);
+        ordenesSeleccionadas.Remove(orden);
+        await CargarPagosAsync();
+        CalcularSaldoSeleccionado();
+        StateHasChanged();
+    }
+
+    private void CalcularSaldoSeleccionado()
+    {
+        totalSaldoSeleccionado = ordenesSeleccionadas.Sum(o => o.SaldoPendiente);
+    }
+
+    private void IrAPago()
+    {
+        var ids = string.Join(",", ordenesSeleccionadas.Select(o => o.IdOrden));
+        Navigation.NavigateTo($"/cobros/realizar?cedula={cedula}&ordenes={ids}");
+    }
+
+    private void IrACuentasPorCobrar()
+    {
+        Navigation.NavigateTo("/cuentasporcobrar");
+    }
+
+    private decimal dineroEfectivo = 0;
+    private decimal transferencia = 0;
+    private decimal totalCobro => dineroEfectivo + transferencia;
+    private bool mostrarModalCobro = false;
+
+
+    private decimal TotalCobro => dineroEfectivo + transferencia;
+
+    private void MostrarModalCobro()
+    {
+        mostrarModalCobro = true;
+    }
+
+    private void CerrarModalCobro()
+    {
+        mostrarModalCobro = false;
+    }
+
+
+    private async Task RegistrarCobroAsync()
+    {
+
+        var pagoDto = new PagoDto
+            {
+                DineroEfectivo = dineroEfectivo,
+                Transferencia = transferencia,
+                Observacion = "Pago desde cuentas por cobrar",
+            };
+
+        bool errores = false;
+
+        foreach (var orden in ordenesSeleccionadas)
+        {
+            pagoDto.IdOrden = orden.IdOrden;
+            var response = await ApiService.RegistrarPagoAsync(pagoDto);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                errores = true;
+                Console.WriteLine($"Error al registrar pago en orden {orden.IdOrden}");
+            }
+        }
+
+        if (errores)
+            await JS.InvokeVoidAsync("alert", "Algunos pagos no se registraron correctamente.");
+        else
+            await JS.InvokeVoidAsync("alert", "Pago registrado exitosamente.");
+
+
+        Navigation.NavigateTo(Navigation.Uri, forceLoad: true);
+    }
+
+
+}

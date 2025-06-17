@@ -1,0 +1,276 @@
+﻿@page "/reactivos"
+@rendermode InteractiveServer
+@using LabWebAppBlazor.Models
+@using LabWebAppBlazor.Services
+@using Microsoft.AspNetCore.Components.Authorization
+@using System.Security.Claims;
+
+@inject IApiService ApiService
+@inject AuthenticationStateProvider AuthProvider
+@inject NavigationManager Navigation
+@inject IJSRuntime JS
+
+<h3>Listado de Reactivos</h3>
+
+<div class="row mb-3">
+    <div class="col-md-3">
+        <label for="criterio">Buscar por</label>
+        <InputSelect id="criterio" class="form-control" @bind-Value="criterioBusqueda">
+            <option value="">-- Seleccione --</option>
+            <option value="nombre">Nombre</option>
+            <option value="fabricante">Fabricante</option>
+            <option value="unidad">Unidad</option>
+        </InputSelect>
+    </div>
+    <div class="col-md-5">
+        <label for="valor">Valor</label>
+        <InputText id="valor" class="form-control" @bind-Value="valorBusqueda" />
+    </div>
+    <div class="col-md-4 mt-4 d-flex gap-2">
+        <button class="btn btn-primary" @onclick="BuscarReactivos">Buscar</button>
+        <button class="btn btn-success" @onclick="MostrarModalNuevo"> Agregar Reactivo</button>
+
+    </div>
+</div>
+
+@if (reactivosFiltrados == null || reactivosFiltrados.Count == 0)
+{
+    <div class="alert alert-warning">No se encontraron reactivos con los filtros aplicados.</div>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table table-bordered table-hover table-striped table-sm">
+            <thead class="table-light">
+                <tr>
+                    <th>Nombre</th>
+                    <th>Fabricante</th>
+                    <th>Unidad</th>
+                    <th class="text-end">Stock Disponible</th>
+                    <th class="text-center">Estado</th>
+                    <th class="text-center">Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var r in reactivosFiltrados)
+                {
+                    <tr>
+                        <td>@r.NombreReactivo</td>
+                        <td>@r.Fabricante</td>
+                        <td>@r.Unidad</td>
+                        <td class="text-end">@r.CantidadDisponible.ToString("N2")</td>
+                        <td class="text-center">
+                            @if (r.Anulado == true)
+                            {
+                                <span class="badge bg-danger">Deshabilitado</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-success">Habilitado</span>
+                            }
+                        </td>
+                        <td class="text-center">
+                            <button class="btn btn-sm btn-primary me-1" @onclick="() => MostrarModalEditar(r)">
+                                <i class="bi bi-pencil-square"></i>
+                            </button>
+                            <button class="btn btn-sm btn-danger" @onclick="() => AnularReactivoAsync(r.IdReactivo)">
+                                <i class="bi bi-x-circle"></i>
+                            </button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+
+        </table>
+    </div>
+}
+
+@if (mostrarModalNuevo)
+{
+    <div class="modal fade show d-block" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">@((modoEdicion ? "Editar" : "Nuevo") + " Reactivo")</h5>
+                    <button type="button" class="btn-close" @onclick="CerrarModalNuevo"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-2">
+                        <label>Nombre del Reactivo</label>
+                        <InputText class="form-control text-uppercase" @bind-Value="nuevoReactivo.NombreReactivo" />
+                        @if (mostrarErrores && string.IsNullOrWhiteSpace(nuevoReactivo.NombreReactivo))
+                        {
+                            <div class="text-danger small">Este campo es obligatorio.</div>
+                        }
+                    </div>
+                    <div class="mb-2">
+                        <label>Fabricante</label>
+                        <InputText class="form-control text-uppercase" @bind-Value="nuevoReactivo.Fabricante" />
+                        @if (mostrarErrores && string.IsNullOrWhiteSpace(nuevoReactivo.Fabricante))
+                        {
+                            <div class="text-danger small">Este campo es obligatorio.</div>
+                        }
+                    </div>
+                    <div class="mb-2">
+                        <label>Unidad</label>
+                        <InputText class="form-control" @bind-Value="nuevoReactivo.Unidad" />
+                        @if (mostrarErrores && string.IsNullOrWhiteSpace(nuevoReactivo.Unidad))
+                        {
+                            <div class="text-danger small">Este campo es obligatorio.</div>
+                        }
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-primary" @onclick="GuardarReactivoAsync">Guardar</button>
+                    <button class="btn btn-secondary" @onclick="CerrarModalNuevo">Cancelar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+
+@code {
+    private List<ReactivoDto> todosReactivos = new();
+    private List<ReactivoDto> reactivosFiltrados = new();
+    private string criterioBusqueda = "";
+    private string valorBusqueda = "";
+    private bool datosCargados = false;
+
+    private bool modoEdicion = false;
+    private int? idReactivoEditando = null;
+
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && !datosCargados)
+        {
+            datosCargados = true;
+
+            var resultado = await ApiService.GetReactivosAsync();
+            todosReactivos = resultado.ToList();
+            reactivosFiltrados = todosReactivos;
+
+            StateHasChanged();
+        }
+    }
+
+    private void BuscarReactivos()
+    {
+        if (string.IsNullOrWhiteSpace(criterioBusqueda) || string.IsNullOrWhiteSpace(valorBusqueda))
+        {
+            reactivosFiltrados = todosReactivos;
+            return;
+        }
+
+        var valor = valorBusqueda.Trim().ToLower();
+
+        reactivosFiltrados = criterioBusqueda switch
+        {
+            "nombre" => todosReactivos.Where(r => r.NombreReactivo?.ToLower().Contains(valor) ?? false).ToList(),
+            "fabricante" => todosReactivos.Where(r => r.Fabricante?.ToLower().Contains(valor) ?? false).ToList(),
+            "unidad" => todosReactivos.Where(r => r.Unidad?.ToLower().Contains(valor) ?? false).ToList(),
+            _ => todosReactivos
+        };
+    }
+
+    private void LimpiarFiltro()
+    {
+        criterioBusqueda = "";
+        valorBusqueda = "";
+        reactivosFiltrados = todosReactivos;
+    }
+
+    private bool mostrarModalNuevo = false;
+    private bool mostrarErrores = false;
+    private ReactivoDto nuevoReactivo = new();
+
+    private void MostrarModalNuevo()
+    {
+        mostrarErrores = false;
+        nuevoReactivo = new();
+        mostrarModalNuevo = true;
+    }
+
+    private void CerrarModalNuevo()
+    {
+        mostrarModalNuevo = false;
+    }
+
+    private async Task GuardarReactivoAsync()
+    {
+        mostrarErrores = true;
+
+        if (string.IsNullOrWhiteSpace(nuevoReactivo.NombreReactivo) ||
+            string.IsNullOrWhiteSpace(nuevoReactivo.Fabricante) ||
+            string.IsNullOrWhiteSpace(nuevoReactivo.Unidad))
+        {
+            return;
+        }
+
+        nuevoReactivo.NombreReactivo = nuevoReactivo.NombreReactivo.Trim().ToUpper();
+        nuevoReactivo.Fabricante = nuevoReactivo.Fabricante.Trim().ToUpper();
+        nuevoReactivo.Unidad = nuevoReactivo.Unidad.Trim();
+
+        bool exito = false;
+
+        if (modoEdicion && idReactivoEditando.HasValue)
+        {
+            exito = await ApiService.EditarReactivoAsync(idReactivoEditando.Value, nuevoReactivo);
+        }
+        else
+        {
+            exito = await ApiService.RegistrarReactivoAsync(nuevoReactivo);
+        }
+
+        if (exito)
+        {
+            await JS.InvokeVoidAsync("alert", $"Reactivo {(modoEdicion ? "editado" : "registrado")} correctamente.");
+            mostrarModalNuevo = false;
+
+            todosReactivos = (await ApiService.GetReactivosAsync()).ToList();
+            BuscarReactivos();
+        }
+        else
+        {
+            await JS.InvokeVoidAsync("alert", "Ocurrió un error al guardar el reactivo.");
+        }
+    }
+
+    private void MostrarModalEditar(ReactivoDto reactivo)
+    {
+        modoEdicion = true;
+        mostrarErrores = false;
+        idReactivoEditando = reactivo.IdReactivo;
+
+        nuevoReactivo = new ReactivoDto
+            {
+                NombreReactivo = reactivo.NombreReactivo,
+                Fabricante = reactivo.Fabricante,
+                Unidad = reactivo.Unidad
+            };
+
+        mostrarModalNuevo = true;
+    }
+
+    private async Task AnularReactivoAsync(int id)
+    {
+        var confirmado = await JS.InvokeAsync<bool>("confirm", "¿Está seguro de anular este reactivo?");
+        if (!confirmado) return;
+
+        var response = await ApiService.AnularReactivoAsync(id);
+
+        if (response.IsSuccessStatusCode)
+        {
+            await JS.InvokeVoidAsync("alert", "Reactivo anulado correctamente.");
+            todosReactivos = (await ApiService.GetReactivosAsync()).ToList();
+            BuscarReactivos();
+        }
+        else
+        {
+            await JS.InvokeVoidAsync("alert", "Error al anular el reactivo.");
+        }
+    }
+
+
+}

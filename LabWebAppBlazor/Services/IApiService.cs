@@ -68,5 +68,13 @@ namespace LabWebAppBlazor.Services
 
         Task<HttpResponseMessage> RegistrarPagoAsync(PagoDto pago);
 
+        Task<IEnumerable<ReactivoDto>> GetReactivosAsync();
+
+        Task<bool> RegistrarReactivoAsync(ReactivoDto nuevo);
+
+        Task<bool> EditarReactivoAsync(int id, ReactivoDto dto);
+        Task<HttpResponseMessage> AnularReactivoAsync(int id);
+
+
     }
 }

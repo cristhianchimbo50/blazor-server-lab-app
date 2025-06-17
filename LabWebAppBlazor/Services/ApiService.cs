@@ -558,5 +558,76 @@ namespace LabWebAppBlazor.Services
             return await _http.SendAsync(request);
         }
 
+        public async Task<IEnumerable<ReactivoDto>> GetReactivosAsync(string? nombre = null, string? fabricante = null, string? unidad = null)
+        {
+            var query = new List<string>();
+            if (!string.IsNullOrWhiteSpace(nombre))
+                query.Add($"nombre={Uri.EscapeDataString(nombre)}");
+            if (!string.IsNullOrWhiteSpace(fabricante))
+                query.Add($"fabricante={Uri.EscapeDataString(fabricante)}");
+            if (!string.IsNullOrWhiteSpace(unidad))
+                query.Add($"unidad={Uri.EscapeDataString(unidad)}");
+
+            var url = "reactivos";
+            if (query.Any())
+                url += "?" + string.Join("&", query);
+
+            var request = new HttpRequestMessage(HttpMethod.Get, url);
+
+            if (!await AttachTokenAsync(request))
+                return Enumerable.Empty<ReactivoDto>();
+
+            var response = await _http.SendAsync(request);
+            if (!response.IsSuccessStatusCode)
+                return Enumerable.Empty<ReactivoDto>();
+
+            return await response.Content.ReadFromJsonAsync<IEnumerable<ReactivoDto>>() ?? [];
+        }
+
+        public async Task<IEnumerable<ReactivoDto>> GetReactivosAsync()
+        {
+            return await GetReactivosAsync(null, null, null);
+        }
+
+        public async Task<bool> RegistrarReactivoAsync(ReactivoDto dto)
+        {
+            var request = new HttpRequestMessage(HttpMethod.Post, "reactivos/registrar")
+            {
+                Content = JsonContent.Create(dto)
+            };
+
+            if (!await AttachTokenAsync(request))
+                return false;
+
+            var response = await _http.SendAsync(request);
+            return response.IsSuccessStatusCode;
+        }
+
+        public async Task<bool> EditarReactivoAsync(int id, ReactivoDto dto)
+        {
+            var request = new HttpRequestMessage(HttpMethod.Put, $"reactivos/{id}")
+            {
+                Content = JsonContent.Create(dto)
+            };
+
+            if (!await AttachTokenAsync(request))
+                return false;
+
+            var response = await _http.SendAsync(request);
+            return response.IsSuccessStatusCode;
+        }
+
+
+        public async Task<HttpResponseMessage> AnularReactivoAsync(int id)
+        {
+            var request = new HttpRequestMessage(HttpMethod.Put, $"reactivos/anular/{id}");
+
+            if (!await AttachTokenAsync(request))
+                return new HttpResponseMessage(System.Net.HttpStatusCode.Unauthorized);
+
+            return await _http.SendAsync(request);
+        }
+
+
     }
 }

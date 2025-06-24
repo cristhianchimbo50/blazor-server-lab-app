@@ -147,6 +147,8 @@
 
         var response = await ApiService.GuardarResultadosAsync(dto);
 
+        var resultadoJson = await response.Content.ReadAsStringAsync();
+
         if (response.IsSuccessStatusCode)
         {
             await JS.InvokeVoidAsync("alert", "Resultado guardado correctamente.");
@@ -154,8 +156,20 @@
         }
         else
         {
-            await JS.InvokeVoidAsync("alert", "Error al guardar el resultado.");
+            try
+            {
+                var errorObj = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, string>>(resultadoJson);
+                var mensaje = errorObj != null && errorObj.ContainsKey("mensaje")
+                    ? errorObj["mensaje"]
+                    : "Error al guardar el resultado.";
+                await JS.InvokeVoidAsync("alert", mensaje);
+            }
+            catch
+            {
+                await JS.InvokeVoidAsync("alert", "Error inesperado al procesar la respuesta.");
+            }
         }
+
     }
 
     private string observacionesGenerales = "";

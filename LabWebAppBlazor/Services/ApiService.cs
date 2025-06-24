@@ -1,7 +1,9 @@
-﻿using System.Net.Http.Json;
+﻿using LabWebAppBlazor.DTOs;
 using LabWebAppBlazor.Models;
 using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage;
+using System.Net.Http;
 using System.Net.Http.Headers;
+using System.Net.Http.Json;
 
 
 namespace LabWebAppBlazor.Services
@@ -640,6 +642,108 @@ namespace LabWebAppBlazor.Services
 
             return await _http.SendAsync(request);
         }
+
+        public async Task<IEnumerable<ExamenReactivoDto>> ObtenerReactivosPorExamenAsync(int idExamen)
+        {
+            var request = new HttpRequestMessage(HttpMethod.Get, $"reactivos/por-examen/{idExamen}");
+
+            if (!await AttachTokenAsync(request))
+                return Enumerable.Empty<ExamenReactivoDto>();
+
+            var response = await _http.SendAsync(request);
+            if (!response.IsSuccessStatusCode)
+                return Enumerable.Empty<ExamenReactivoDto>();
+
+            return await response.Content.ReadFromJsonAsync<IEnumerable<ExamenReactivoDto>>() ?? [];
+        }
+
+
+        public async Task<HttpResponseMessage> GuardarReactivosPorExamenAsync(int idExamen, List<ReactivoAsociadoDto> lista)
+        {
+            var payload = lista.Select(r => new ExamenReactivoDto
+            {
+                IdExamen = idExamen,
+                IdReactivo = r.IdReactivo,
+                NombreReactivo = r.NombreReactivo,
+                Unidad = r.Unidad,
+                CantidadUsada = r.CantidadUsada
+            }).ToList();
+
+            var request = new HttpRequestMessage(HttpMethod.Post, "reactivos/examenes-reactivos")
+            {
+                Content = JsonContent.Create(payload)
+            };
+
+            if (!await AttachTokenAsync(request))
+                return new HttpResponseMessage(System.Net.HttpStatusCode.Unauthorized);
+
+            return await _http.SendAsync(request);
+        }
+
+
+
+        public async Task<HttpResponseMessage> EliminarReactivoAsociadoAsync(int idAsociacion)
+        {
+            var request = new HttpRequestMessage(HttpMethod.Delete, $"examenes-reactivos/{idAsociacion}");
+
+            if (!await AttachTokenAsync(request))
+                return new HttpResponseMessage(System.Net.HttpStatusCode.Unauthorized);
+
+            return await _http.SendAsync(request);
+        }
+
+        public async Task<List<ExamenDto>> FiltrarExamenesAsync(string criterio, string valor)
+        {
+            var response = await _http.GetAsync($"api/Examenes/filtrar?{criterio}={valor}");
+            if (response.IsSuccessStatusCode)
+                return await response.Content.ReadFromJsonAsync<List<ExamenDto>>() ?? new();
+            return new();
+        }
+
+        public async Task<List<ReactivoDto>> FiltrarReactivosAsync(string criterio, string valor)
+        {
+            var response = await _http.GetAsync($"api/Reactivos/filtrar?{criterio}={valor}");
+            if (response.IsSuccessStatusCode)
+                return await response.Content.ReadFromJsonAsync<List<ReactivoDto>>() ?? new();
+            return new();
+        }
+
+        public async Task<IEnumerable<AsociacionReactivoDto>> ObtenerTodasLasAsociacionesAsync()
+        {
+            return await _http.GetFromJsonAsync<List<AsociacionReactivoDto>>("reactivos/asociaciones")
+                   ?? new List<AsociacionReactivoDto>();
+        }
+
+        public async Task<ExamenDto?> ObtenerExamenPorIdAsync(int id)
+        {
+            var response = await _http.GetAsync($"examenes/{id}");
+            if (response.IsSuccessStatusCode)
+                return await response.Content.ReadFromJsonAsync<ExamenDto>();
+            return null;
+        }
+
+        public async Task<ExamenConReactivosDto?> ObtenerExamenConReactivosAsync(int id)
+        {
+            var request = new HttpRequestMessage(HttpMethod.Get, $"examenes/con-reactivos/{id}");
+
+            if (!await AttachTokenAsync(request))
+            {
+                Console.WriteLine("Token no disponible o inválido para examen con reactivos");
+                return null;
+            }
+
+            var response = await _http.SendAsync(request);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                var error = await response.Content.ReadAsStringAsync();
+                Console.WriteLine($" Error HTTP {response.StatusCode} al obtener examen con reactivos. Detalle: {error}");
+                return null;
+            }
+
+            return await response.Content.ReadFromJsonAsync<ExamenConReactivosDto>();
+        }
+
 
 
     }

@@ -1,0 +1,353 @@
+﻿@page "/examenes-reactivos"
+@page "/examenes-reactivos/{idExamen:int?}"
+@rendermode InteractiveServer
+@using LabWebAppBlazor.Models
+@using Microsoft.AspNetCore.WebUtilities
+@using LabWebAppBlazor.Services
+@using Microsoft.AspNetCore.Components.Authorization
+@using System.Security.Claims
+
+@inject IApiService ApiService
+@inject AuthenticationStateProvider AuthProvider
+@inject NavigationManager Navigation
+@inject IJSRuntime JS
+
+<div class="container-fluid mt-3">
+    <h3 class="mb-4">
+        <i class="fas fa-vials me-2"></i>Asociar Reactivos a Examen
+    </h3>
+
+    <div class="row g-3 mb-4">
+        <div class="col-md-8">
+            <label class="form-label fw-semibold">Examen Seleccionado</label>
+            <input class="form-control" value="@examenSeleccionado?.NombreExamen" disabled placeholder="Seleccione un examen..." />
+        </div>
+        <div class="col-md-4 d-flex align-items-end">
+            <button class="btn btn-primary w-100" @onclick="MostrarModalExamen">
+                <i class="fas fa-search me-1"></i> Buscar Examen
+            </button>
+        </div>
+    </div>
+
+    @if (examenSeleccionado != null)
+    {
+        <div class="table-responsive mb-3">
+            <table class="table table-bordered table-hover align-middle text-center">
+                <thead class="table-light">
+                    <tr>
+                        <th>Nombre del Reactivo</th>
+                        <th style="width: 180px;">Cantidad Usada</th>
+                        <th style="width: 100px;">Unidad</th>
+                        <th style="width: 80px;">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in reactivosAsociados)
+                    {
+                        <tr>
+                            <td class="text-start">@item.NombreReactivo</td>
+                            <td>
+                                <input type="number" step="0.01" class="form-control form-control-sm text-end"
+                                       @bind="item.CantidadUsada" />
+                            </td>
+                            <td>@item.Unidad</td>
+                            <td>
+                                <button class="btn btn-sm btn-danger" @onclick="@(() => QuitarReactivo(item))" title="Quitar reactivo">
+                                    <i class="fas fa-trash-alt"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        <div class="d-flex flex-wrap gap-2">
+            <button class="btn btn-outline-success" @onclick="MostrarModalReactivo">
+                <i class="fas fa-plus-circle me-1"></i> Agregar Reactivo
+            </button>
+            <button class="btn btn-primary" @onclick="GuardarAsociaciones">
+                <i class="fas fa-save me-1"></i> Guardar Cambios
+            </button>
+        </div>
+    }
+</div>
+
+<!-- Modal Buscar Examen -->
+@if (mostrarModalExamen)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0, 0, 0, 0.5);">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Buscar Examen</h5>
+                    <button type="button" class="btn-close" @onclick="() => mostrarModalExamen = false"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row g-2 mb-3">
+                        <div class="col-md-4">
+                            <label class="form-label">Buscar por</label>
+                            <select class="form-select" @bind="criterioExamen">
+                                @foreach (var o in criteriosExamen)
+                                {
+                                    <option value="@o.Key">@o.Value</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Valor</label>
+                            <input class="form-control" placeholder="Ingrese valor..." @bind="valorExamen" />
+                        </div>
+                        <div class="col-md-2 d-flex align-items-end">
+                            <button class="btn btn-primary w-100" @onclick="BuscarExamenes">
+                                <i class="fas fa-search me-1"></i> Buscar
+                            </button>
+                        </div>
+                    </div>
+                    <table class="table table-bordered table-hover align-middle text-center">
+                        <thead>
+                            <tr>
+                                <th>Nombre</th>
+                                <th>Estudio</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var ex in examenesEncontrados)
+                            {
+                                <tr @ondblclick="@(() => SeleccionarExamen(ex))" style="cursor:pointer">
+                                    <td>@ex.NombreExamen</td>
+                                    <td>@ex.Estudio</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" @onclick="() => mostrarModalExamen = false">
+                        <i class="fas fa-times me-1"></i> Cerrar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<!-- Modal Buscar Reactivo -->
+@if (mostrarModalReactivo)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0, 0, 0, 0.5);">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Buscar Reactivo</h5>
+                    <button type="button" class="btn-close" @onclick="() => mostrarModalReactivo = false"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row g-2 mb-3">
+                        <div class="col-md-4">
+                            <label class="form-label">Buscar por</label>
+                            <select class="form-select" @bind="criterioReactivo">
+                                @foreach (var o in criteriosReactivo)
+                                {
+                                    <option value="@o.Key">@o.Value</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Valor</label>
+                            <input class="form-control" placeholder="Ingrese valor..." @bind="valorReactivo" />
+                        </div>
+                        <div class="col-md-2 d-flex align-items-end">
+                            <button class="btn btn-primary w-100" @onclick="BuscarReactivos">
+                                <i class="fas fa-search me-1"></i> Buscar
+                            </button>
+                        </div>
+                    </div>
+                    <table class="table table-bordered table-hover align-middle text-center">
+                        <thead>
+                            <tr>
+                                <th>Nombre</th>
+                                <th>Fabricante</th>
+                                <th>Unidad</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var r in reactivosEncontrados)
+                            {
+                                <tr @ondblclick="@(() => SeleccionarReactivo(r))" style="cursor:pointer">
+                                    <td>@r.NombreReactivo</td>
+                                    <td>@r.Fabricante</td>
+                                    <td>@r.Unidad</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" @onclick="() => mostrarModalReactivo = false">
+                        <i class="fas fa-times me-1"></i> Cerrar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private ExamenDto? examenSeleccionado;
+    private List<ReactivoAsociadoDto> reactivosAsociados = new();
+
+    private bool mostrarModalExamen = false;
+    private bool mostrarModalReactivo = false;
+
+    private string criterioExamen = "nombre";
+    private string valorExamen = "";
+    private List<ExamenDto> examenesEncontrados = new();
+
+    private string criterioReactivo = "nombre";
+    private string valorReactivo = "";
+    private List<ReactivoDto> reactivosEncontrados = new();
+
+    [Parameter]
+    public int? idExamen { get; set; }
+
+    private readonly List<KeyValuePair<string, string>> criteriosExamen = new()
+    {
+        new("nombre", "Nombre"),
+        new("estudio", "Estudio")
+    };
+
+    private readonly List<KeyValuePair<string, string>> criteriosReactivo = new()
+    {
+        new("nombre", "Nombre"),
+        new("fabricante", "Fabricante")
+    };
+
+    private void MostrarModalExamen() => mostrarModalExamen = true;
+    private void MostrarModalReactivo() => mostrarModalReactivo = true;
+
+    private List<ExamenDto> todosLosExamenes = new();
+    private List<ReactivoDto> todosLosReactivos = new();
+
+    private async Task BuscarExamenes()
+    {
+        if (!todosLosExamenes.Any())
+            todosLosExamenes = (await ApiService.GetExamenesAsync()).ToList();
+
+        var valor = valorExamen.Trim().ToLower();
+
+        examenesEncontrados = criterioExamen switch
+        {
+            "nombre" => todosLosExamenes.Where(e => e.NombreExamen.ToLower().Contains(valor)).ToList(),
+            "estudio" => todosLosExamenes.Where(e => e.Estudio?.ToLower().Contains(valor) ?? false).ToList(),
+            _ => todosLosExamenes.ToList()
+        };
+    }
+
+    private async Task BuscarReactivos()
+    {
+        if (!todosLosReactivos.Any())
+            todosLosReactivos = (await ApiService.GetReactivosAsync()).ToList();
+
+        var valor = valorReactivo.Trim().ToLower();
+
+        reactivosEncontrados = criterioReactivo switch
+        {
+            "nombre" => todosLosReactivos.Where(r => r.NombreReactivo?.ToLower().Contains(valor) ?? false).ToList(),
+            "fabricante" => todosLosReactivos.Where(r => r.Fabricante?.ToLower().Contains(valor) ?? false).ToList(),
+            _ => todosLosReactivos.ToList()
+        };
+    }
+
+    private async Task SeleccionarExamen(ExamenDto examen)
+    {
+        examenSeleccionado = examen;
+        mostrarModalExamen = false;
+
+        var resultado = await ApiService.ObtenerReactivosPorExamenAsync(examen.IdExamen);
+
+        reactivosAsociados = resultado.Select(r => new ReactivoAsociadoDto
+        {
+            IdReactivo = r.IdReactivo,
+            NombreReactivo = r.NombreReactivo,
+            Unidad = r.Unidad,
+            CantidadUsada = r.CantidadUsada
+        }).ToList();
+    }
+
+    private void SeleccionarReactivo(ReactivoDto reactivo)
+    {
+        if (reactivosAsociados.Any(r => r.IdReactivo == reactivo.IdReactivo))
+        {
+            JS.InvokeVoidAsync("alert", "Este reactivo ya está en la lista.");
+            return;
+        }
+
+        reactivosAsociados.Add(new ReactivoAsociadoDto
+        {
+            IdReactivo = reactivo.IdReactivo,
+            NombreReactivo = reactivo.NombreReactivo ?? "",
+            Unidad = reactivo.Unidad ?? "",
+            CantidadUsada = 0
+        });
+
+        mostrarModalReactivo = false;
+    }
+
+    private void QuitarReactivo(ReactivoAsociadoDto item)
+    {
+        reactivosAsociados.Remove(item);
+    }
+
+    private async Task GuardarAsociaciones()
+    {
+        if (examenSeleccionado == null || !reactivosAsociados.Any())
+        {
+            await JS.InvokeVoidAsync("alert", "Debe seleccionar un examen y al menos un reactivo.");
+            return;
+        }
+
+        var response = await ApiService.GuardarReactivosPorExamenAsync(examenSeleccionado.IdExamen, reactivosAsociados);
+
+        if (response.IsSuccessStatusCode)
+        {
+            await JS.InvokeVoidAsync("alert", "Asociaciones guardadas correctamente.");
+        }
+        else
+        {
+            await JS.InvokeVoidAsync("alert", "Error al guardar asociaciones.");
+        }
+    }
+
+    private bool yaCargado = false;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && !yaCargado)
+        {
+            yaCargado = true;
+
+            var uri = Navigation.ToAbsoluteUri(Navigation.Uri);
+            if (QueryHelpers.ParseQuery(uri.Query).TryGetValue("idExamen", out var idParam))
+            {
+                if (int.TryParse(idParam, out var id))
+                {
+                    var respuesta = await ApiService.ObtenerExamenConReactivosAsync(id);
+                    if (respuesta is not null)
+                    {
+                        examenSeleccionado = respuesta.Examen;
+                        reactivosAsociados = respuesta.Reactivos.Select(r => new ReactivoAsociadoDto
+                        {
+                            IdReactivo = r.IdReactivo,
+                            NombreReactivo = r.NombreReactivo,
+                            Unidad = r.Unidad,
+                            CantidadUsada = r.CantidadUsada
+                        }).ToList();
+                    }
+                }
+            }
+
+            StateHasChanged(); // Forzar renderizado si cambió algo
+        }
+    }
+}

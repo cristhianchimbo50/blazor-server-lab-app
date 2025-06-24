@@ -1,0 +1,97 @@
+﻿@page "/asociaciones-reactivos"
+@rendermode InteractiveServer
+@using LabWebAppBlazor.DTOs
+@using LabWebAppBlazor.Models
+@using LabWebAppBlazor.Services
+@using Microsoft.AspNetCore.Components.Authorization
+@using System.Security.Claims
+
+@inject IApiService ApiService
+@inject AuthenticationStateProvider AuthProvider
+@inject NavigationManager Navigation
+@inject IJSRuntime JS
+
+<h3 class="mb-3">
+    <i class="fas fa-list-ul me-2"></i>Asociaciones Exámenes - Reactivos
+</h3>
+
+@if (cargando)
+{
+    <div class="text-center my-4">
+        <div class="spinner-border text-primary" role="status"></div>
+        <p class="mt-2">Cargando datos...</p>
+    </div>
+}
+else if (asociaciones.Any())
+{
+    <div class="d-flex justify-content-end mb-3">
+        <button class="btn btn-success text-white" @onclick="IrAVinculoReactivos" title="Vincular Reactivos a Exámenes">
+            <i class="fas fa-vials me-1"></i> Vincular Reactivos
+        </button>
+    </div>
+
+    <div class="table-responsive">
+        <table class="table table-bordered table-hover align-middle text-center">
+            <thead class="table-light">
+                <tr>
+                    <th>Examen</th>
+                    <th>Reactivo</th>
+                    <th>Cantidad Usada</th>
+                    <th>Unidad</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var item in asociaciones)
+                {
+                    <tr>
+                        <td>@item.NombreExamen</td>
+                        <td>@item.NombreReactivo</td>
+                        <td class="text-end">@item.CantidadUsada</td>
+                        <td>@item.Unidad</td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-primary"
+                                    @onclick="() => IrAEditar(item.IdExamen)">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+else
+{
+    <div class="alert alert-warning mt-4">
+        <i class="fas fa-info-circle me-2"></i> No hay asociaciones registradas.
+    </div>
+
+    <div class="d-flex justify-content-end mt-3">
+        <button class="btn btn-success text-white" @onclick="IrAVinculoReactivos" title="Vincular Reactivos a Exámenes">
+            <i class="fas fa-vials me-1"></i> Vincular Reactivos
+        </button>
+    </div>
+}
+
+@code {
+    private bool cargando = true;
+    private List<AsociacionReactivoDto> asociaciones = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        var datos = await ApiService.ObtenerTodasLasAsociacionesAsync();
+        asociaciones = datos.ToList();
+        cargando = false;
+    }
+
+    private void IrAEditar(int idExamen)
+    {
+        Navigation.NavigateTo($"/examenes-reactivos?idExamen={idExamen}");
+    }
+
+    private void IrAVinculoReactivos()
+    {
+        Navigation.NavigateTo("/examenes-reactivos");
+    }
+}

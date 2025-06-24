@@ -1,4 +1,5 @@
-﻿using LabWebAppBlazor.Models;
+﻿using LabWebAppBlazor.DTOs;
+using LabWebAppBlazor.Models;
 
 namespace LabWebAppBlazor.Services
 {
@@ -76,6 +77,22 @@ namespace LabWebAppBlazor.Services
         Task<HttpResponseMessage> AnularReactivoAsync(int id);
 
         Task<HttpResponseMessage> RegistrarMovimientosAsync(List<MovimientoReactivoDto> movimientos);
+
+        Task<IEnumerable<ExamenReactivoDto>> ObtenerReactivosPorExamenAsync(int idExamen);
+        Task<HttpResponseMessage> EliminarReactivoAsociadoAsync(int idAsociacion);
+
+        Task<List<ExamenDto>> FiltrarExamenesAsync(string criterio, string valor);
+        Task<List<ReactivoDto>> FiltrarReactivosAsync(string criterio, string valor);
+
+        Task<HttpResponseMessage> GuardarReactivosPorExamenAsync(int idExamen, List<ReactivoAsociadoDto> lista);
+
+
+        Task<IEnumerable<AsociacionReactivoDto>> ObtenerTodasLasAsociacionesAsync();
+
+        Task<ExamenDto?> ObtenerExamenPorIdAsync(int id);
+
+        Task<ExamenConReactivosDto?> ObtenerExamenConReactivosAsync(int id);
+
 
     }
 }

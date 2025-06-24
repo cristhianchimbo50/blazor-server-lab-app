@@ -81,6 +81,32 @@
             }
         }
 
+        foreach (var idPadre in idsExamenes)
+        {
+            var hijos = (await ApiService.ObtenerHijosDeExamenAsync(idPadre)).ToList();
+
+            if (hijos.Any())
+            {
+                foreach (var hijo in hijos)
+                {
+                    if (!idsIncluidos.Contains(hijo.IdExamen))
+                    {
+                        hijosPorAgregar.Add(hijo);
+                        idsIncluidos.Add(hijo.IdExamen);
+                    }
+                }
+            }
+            else
+            {
+                var examenPadre = todos.FirstOrDefault(e => e.IdExamen == idPadre);
+                if (examenPadre != null && !idsIncluidos.Contains(examenPadre.IdExamen))
+                {
+                    hijosPorAgregar.Add(examenPadre);
+                    idsIncluidos.Add(examenPadre.IdExamen);
+                }
+            }
+        }
+
         ExamenesSeleccionados = hijosPorAgregar;
 
         foreach (var ex in ExamenesSeleccionados)
@@ -148,57 +174,61 @@ else
     <div class="container">
         <h4>Ingresar Resultados</h4>
 
-        <div class="row mb-3">
-            <div class="col-md-4">
-                <label><strong>Cédula</strong></label>
-                <input class="form-control" value="@DatosOrden.CedulaPaciente" disabled />
+        <div class="row g-3 mb-4">
+            <div class="col-12 col-md-4">
+                <label for="cedula" class="form-label fw-semibold">Cédula</label>
+                <input id="cedula" class="form-control" value="@DatosOrden.CedulaPaciente" disabled />
             </div>
-            <div class="col-md-4">
-                <label><strong>Nombre</strong></label>
-                <input class="form-control" value="@DatosOrden.NombrePaciente" disabled />
+            <div class="col-12 col-md-4">
+                <label for="nombre" class="form-label fw-semibold">Nombre Paciente</label>
+                <input id="nombre" class="form-control" value="@DatosOrden.NombrePaciente" disabled />
             </div>
-            <div class="col-md-4">
-                <label><strong>Fecha Resultado</strong></label>
-                <input type="date" class="form-control" @bind="fechaResultado" />
+            <div class="col-12 col-md-4">
+                <label for="fecha" class="form-label fw-semibold">Fecha Resultado</label>
+                <input id="fecha" type="date" class="form-control" @bind="fechaResultado" />
             </div>
-
-            <div class="col-md-4">
-                <label><strong>Médico</strong></label>
-                <input class="form-control" value="@DatosOrden.NombreMedico" disabled />
+            <div class="col-12 col-md-6">
+                <label for="medico" class="form-label fw-semibold">Médico Tratante</label>
+                <input id="medico" class="form-control" value="@DatosOrden.NombreMedico" disabled />
             </div>
-
         </div>
 
-        <h5>Exámenes Seleccionados</h5>
-        <table class="table table-bordered table-sm">
-            <thead class="table-light">
-                <tr>
-                    <th>Examen</th>
-                    <th>Valor</th>
-                    <th>Unidad</th>
-                    <th>Valor de Referencia</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var ex in ExamenesSeleccionados)
-                {
+
+        <h5 class="mt-4">Parámetros del Examen</h5>
+        <div class="table-responsive">
+            <table class="table table-hover table-bordered align-middle">
+                <thead class="table-primary text-center">
                     <tr>
-                        <td>@ex.NombreExamen</td>
-                        <td>
-                            <input type="text" class="form-control"
-                                   @bind="ValoresIngresados[ex.IdExamen]" />
-                        </td>
-                        <td>@ex.Unidad</td>
-                        <td>@ex.ValorReferencia</td>
+                        <th>Examen</th>
+                        <th style="width: 20%;">Valor</th>
+                        <th>Unidad</th>
+                        <th>Valor de Referencia</th>
                     </tr>
-                }
-            </tbody>
-        </table>
-
-        <div class="mb-3">
-            <label><strong>Observaciones Generales</strong></label>
-            <textarea class="form-control" rows="3" @bind="observacionesGenerales"></textarea>
+                </thead>
+                <tbody>
+                    @foreach (var ex in ExamenesSeleccionados)
+                    {
+                        <tr>
+                            <td>@ex.NombreExamen</td>
+                            <td>
+                                <input type="text" class="form-control text-end"
+                                       @bind="ValoresIngresados[ex.IdExamen]" />
+                            </td>
+                            <td>@ex.Unidad</td>
+                            <td>@ex.ValorReferencia</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
         </div>
+
+
+        <div class="mb-4">
+            <label for="obs" class="form-label fw-semibold">Observaciones Generales</label>
+            <textarea id="obs" class="form-control" rows="4" @bind="observacionesGenerales"
+                      placeholder="Ingrese observaciones adicionales si las hay..."></textarea>
+        </div>
+
 
         <button class="btn btn-primary" @onclick="GuardarResultados">Guardar Resultado</button>
 <button class="btn btn-secondary ms-2" @onclick="@(() => Navigation.NavigateTo("/ordenes"))">Cancelar</button>

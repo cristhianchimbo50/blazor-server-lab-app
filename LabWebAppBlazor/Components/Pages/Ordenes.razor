@@ -10,16 +10,15 @@
 @inject NavigationManager Navigation
 @inject IJSRuntime JS
 
-
-<h3>Gestión de Órdenes</h3>
+<h3 class="mb-4"><i class="fas fa-file-medical-alt me-2"></i>Gestión de Órdenes</h3>
 
 @if (!isRendered)
 {
-    <p>Cargando interfaz...</p>
+    <div class="alert alert-info">Cargando interfaz...</div>
 }
 else if (!showContent)
 {
-    <p>No autorizado.</p>
+    <div class="alert alert-danger">No autorizado.</div>
 }
 else
 {
@@ -39,78 +38,93 @@ else
             <InputText class="form-control" @bind-Value="valorBusqueda" />
         </div>
         <div class="col-md-4 mt-4 d-flex gap-2">
-            <button class="btn btn-primary" @onclick="BuscarOrdenes">Buscar</button>
-            <button class="btn btn-success" @onclick="IrAIngresarOrden">Ingresar Orden</button>
+            <button class="btn btn-primary" @onclick="BuscarOrdenes" title="Buscar">
+                <i class="fas fa-search"></i>
+            </button>
+            <button class="btn btn-success" @onclick="IrAIngresarOrden">
+                <i class="fas fa-plus"></i>
+            </button>
         </div>
-
     </div>
 
     @if (ordenes == null || ordenes.Count == 0)
     {
-        <p>No se encontraron órdenes.</p>
+        <div class="alert alert-warning">No se encontraron órdenes.</div>
     }
     else
     {
-        <table class="table table-bordered table-striped">
-            <thead class="table-light">
-                <tr>
-                    <th>Número</th>
-                    <th>Cédula</th>
-                    <th>Nombre</th>
-                    <th>Fecha</th>
-                    <th>Total</th>
-                    <th>Pagado</th>
-                    <th>Saldo</th>
-                    <th>Estado Pago</th>
-                    <th>Estado</th>
-                    <th>Acciones</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var orden in ordenes)
-                {
+        <div class="table-responsive">
+            <table class="table table-bordered table-hover align-middle text-center">
+                <thead class="table-light">
                     <tr>
-                        <td>@orden.NumeroOrden</td>
-                        <td>@orden.CedulaPaciente</td>
-                        <td>@orden.NombrePaciente</td>
-                        <td>@orden.FechaOrden.ToShortDateString()</td>
-                        <td>@orden.Total.ToString("C")</td>
-                        <td>@orden.TotalPagado.ToString("C")</td>
-                        <td>@orden.SaldoPendiente.ToString("C")</td>
-                        <td>@orden.EstadoPago</td>
-                        <td>@(orden.Anulado ? "Anulado" : "Activo")</td>
-                        <td>
-                            <button class="btn btn-sm btn-info" @onclick="() => VerDetalleOrden(orden.IdOrden)">Ver</button>
-                        </td>
-
+                        <th>Número</th>
+                        <th>Cédula</th>
+                        <th>Nombre</th>
+                        <th>Fecha</th>
+                        <th>Total</th>
+                        <th>Pagado</th>
+                        <th>Saldo</th>
+                        <th>Estado Pago</th>
+                        <th>Estado</th>
+                        <th>Acciones</th>
                     </tr>
-                }
-            </tbody>
-        </table>
+                </thead>
+                <tbody>
+                    @foreach (var orden in ordenes)
+                    {
+                        <tr>
+                            <td>@orden.NumeroOrden</td>
+                            <td>@orden.CedulaPaciente</td>
+                            <td>@orden.NombrePaciente</td>
+                            <td>@orden.FechaOrden.ToShortDateString()</td>
+                            <td>@orden.Total.ToString("C")</td>
+                            <td>@orden.TotalPagado.ToString("C")</td>
+                            <td>@orden.SaldoPendiente.ToString("C")</td>
+                            <td>
+                                <span class="badge bg-@(orden.EstadoPago == "Cancelado" ? "success" : "warning")">
+                                    @orden.EstadoPago
+                                </span>
+                            </td>
+                            <td>
+                                <span class="badge bg-@(orden.Anulado ? "danger" : "primary")">
+                                    @(orden.Anulado ? "Anulado" : "Activo")
+                                </span>
+                            </td>
+                            <td>
+                                <button class="btn btn-sm btn-outline-primary" title="Ver Detalles"
+                                        @onclick="() => VerDetalleOrden(orden.IdOrden)">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
     }
 }
 
 @if (mostrarDetalleOrden && DetalleActual is not null)
 {
     <div class="modal fade show d-block" style="background-color: rgba(0,0,0,0.5);">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-                <div class="modal-header">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content shadow">
+                <div class="modal-header bg-primary text-white">
                     <h5 class="modal-title">
-                        Detalle de Orden <span class="badge bg-primary">@DetalleActual.NumeroOrden</span>
+                        <i class="fas fa-info-circle me-2"></i>Detalle de Orden
+                        <span class="badge bg-light text-dark">@DetalleActual.NumeroOrden</span>
                     </h5>
                     <button class="btn-close" @onclick="ConfirmarCerrarDetalle"></button>
                 </div>
                 <div class="modal-body">
-
                     @if (DetalleActual.Anulado)
                     {
-                        <div class="alert alert-danger text-center">
+                        <div class="alert alert-danger text-center fw-bold">
                             Esta orden ha sido anulada.
                         </div>
                     }
 
-                    <div class="row mb-3">
+                    <div class="row g-2 mb-3">
                         <div class="col-md-3">
                             <label><strong>Fecha de Orden</strong></label>
                             <input class="form-control"
@@ -143,108 +157,68 @@ else
                         </div>
                     </div>
 
-                    <h5>Exámenes</h5>
-                    <table class="table table-bordered">
-                        <thead>
-                            <tr>
-                                <th>Seleccionar</th>
-                                <th>Nombre del Examen</th>
-                                <th>Estudio</th>
-                                <th>Resultado</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach (var ex in DetalleActual.Examenes.OrderBy(e => e.NombreEstudio))
-                            {
+                    <h5 class="mt-4"><i class="fas fa-vials me-2"></i>Exámenes</h5>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-bordered align-middle text-center">
+                            <thead class="table-light">
                                 <tr>
-                                    <td>
-                                        <input type="checkbox"
-                                               @bind="@ex.Seleccionado"
-                                               disabled="@DetalleActual.Anulado" />
-                                    </td>
-                                    <td>@ex.NombreExamen</td>
-                                    <td>@ex.NombreEstudio</td>
-                                    <td>
-                                        @if (ex.IdResultado.HasValue)
-                                        {
-                                            <span class="badge bg-success">@ex.NumeroResultado</span>
-                                        }
-                                        else
-                                        {
-                                            <span class="text-muted">Pendiente</span>
-                                        }
-                                    </td>
+                                    <th>Seleccionar</th>
+                                    <th>Nombre del Examen</th>
+                                    <th>Estudio</th>
+                                    <th>Resultado</th>
                                 </tr>
-                            }
-                        </tbody>
-                    </table>
-
+                            </thead>
+                            <tbody>
+                                @foreach (var ex in DetalleActual.Examenes.OrderBy(e => e.NombreEstudio))
+                                {
+                                    <tr>
+                                        <td>
+                                            <input type="checkbox"
+                                                   @bind="@ex.Seleccionado"
+                                                   disabled="@((DetalleActual.Anulado || ex.IdResultado is not null))" />
+                                        </td>
+                                        <td>@ex.NombreExamen</td>
+                                        <td>@ex.NombreEstudio</td>
+                                        <td>
+                                            @if (ex.IdResultado.HasValue)
+                                            {
+                                                <span class="badge bg-success">@ex.NumeroResultado</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="text-muted">Pendiente</span>
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
                     @if (!DetalleActual.Anulado)
                     {
-                        <div class="d-flex gap-2 mb-3">
+                        <div class="d-flex flex-wrap gap-2 justify-content-start mt-3">
                             <button class="btn btn-success" @onclick="IrAIngresarResultados">
-                                Ingresar Resultados
+                                <i class="fas fa-flask me-1"></i> Ingresar Resultados
                             </button>
 
                             <button class="btn btn-secondary" @onclick="MostrarTicketPreview">
-                                Imprimir Orden
+                                <i class="fas fa-receipt me-1"></i> Imprimir Orden
                             </button>
 
                             <button class="btn btn-danger" @onclick="AnularOrden">
-                                Anular Orden
+                                <i class="fas fa-ban me-1"></i> Anular Orden
                             </button>
 
                             <button class="btn btn-outline-primary" @onclick="VisualizarResultadoPDF">
-                                Imprimir Resultados
+                                <i class="fas fa-file-pdf me-1"></i> Imprimir Resultados
                             </button>
-
                         </div>
                     }
-
-
-
                 </div>
             </div>
         </div>
     </div>
 }
-
-<div style="display:none">
-    <div id="ticketContent">
-        <div style="text-align:center; font-family: monospace;">
-            <h4>LA INMACULADA</h4>
-            <p>LABORATORIO CLÍNICO DE BAJA COMPLEJIDAD</p>
-            <p>Dir: Av. 20 de Diciembre y López de Galarza<br />Guano - Chimborazo</p>
-            <p>Tel: 099 505 5992 / 098 323 9788</p>
-            <h5>TICKET</h5>
-            <p><strong>N°:</strong> @DetalleActual?.IdOrden</p>
-            <p><strong>Fecha:</strong> @DateTime.Now.ToShortDateString()</p>
-            <p><strong>Paciente:</strong> @DetalleActual?.NombrePaciente</p>
-            <p><strong>Cédula:</strong> @DetalleActual?.CedulaPaciente</p>
-            <p><strong>Edad:</strong>  @DateTime.Now.Year - DetalleActual?.FechaNacimiento?.Year años</p>
-            <p><strong>Médico:</strong> PARTICULAR</p>
-
-            <table style="width:100%; font-size:small;">
-                <thead><tr><td><strong>Examen</strong></td><td><strong>Precio</strong></td></tr></thead>
-                <tbody>
-                    @foreach (var ex in DetalleActual?.Examenes ?? new())
-                    {
-                        <tr>
-                            <td>@ex.NombreExamen</td>
-                            <td style="text-align:right;">$5.00</td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
-
-            <p>Total: <strong>$@DetalleActual?.TotalOrden.ToString("0.00")</strong></p>
-            <p>Pagado: $@DetalleActual?.TotalPagado</p>
-            <p>Saldo: $@DetalleActual?.SaldoPendiente</p>
-            <p>Forma de pago: Efectivo</p>
-            <p>¡Gracias por su preferencia!</p>
-        </div>
-    </div>
-</div>
 
 @code {
     private List<OrdenDto> ordenes = new();
@@ -256,6 +230,8 @@ else
     private ClaimsPrincipal? user;
 
     private ResultadoDetalleDto? DetalleResultado;
+    private OrdenDetalleDto? DetalleActual;
+    private bool mostrarDetalleOrden = false;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -285,7 +261,6 @@ else
             .ToList();
     }
 
-
     private async Task BuscarOrdenes()
     {
         var todas = await ApiService.GetOrdenesAsync();
@@ -312,15 +287,10 @@ else
         StateHasChanged();
     }
 
-
-
     private void IrAIngresarOrden()
     {
         Navigation.NavigateTo("/ordenes/nuevo", forceLoad: true);
     }
-
-    private OrdenDetalleDto? DetalleActual;
-    private bool mostrarDetalleOrden = false;
 
     private async Task VerDetalleOrden(int idOrden)
     {
@@ -334,6 +304,7 @@ else
         if (confirmado)
             mostrarDetalleOrden = false;
     }
+
 
     private async Task ValidarExamenesSeleccionados()
     {
@@ -388,7 +359,8 @@ else
     {
         if (DetalleActual is null) return;
 
-        var seleccionados = DetalleActual.Examenes.Where(e => e.Seleccionado).ToList();
+        var todos = DetalleActual.Examenes;
+        var seleccionados = todos.Where(e => e.Seleccionado).ToList();
 
         if (!seleccionados.Any())
         {
@@ -396,11 +368,22 @@ else
             return;
         }
 
-        var primerEstudio = seleccionados.First().NombreEstudio;
-
-        if (seleccionados.Any(e => e.NombreEstudio != primerEstudio))
+        // Validar que todos los seleccionados pertenezcan al mismo estudio
+        var estudio = seleccionados.First().NombreEstudio;
+        if (seleccionados.Any(e => e.NombreEstudio != estudio))
         {
             await JS.InvokeVoidAsync("alert", "Todos los exámenes seleccionados deben pertenecer al mismo estudio.");
+            return;
+        }
+
+        // Validar que no falten exámenes del mismo estudio sin seleccionar
+        var noSeleccionadosDelMismoEstudio = todos
+            .Where(e => !e.Seleccionado && e.NombreEstudio == estudio)
+            .ToList();
+
+        if (noSeleccionadosDelMismoEstudio.Any())
+        {
+            await JS.InvokeVoidAsync("alert", $"Debe seleccionar todos los exámenes del estudio: {estudio}.");
             return;
         }
 
@@ -408,11 +391,12 @@ else
         Navigation.NavigateTo($"/resultados/ingresar?idOrden={DetalleActual.IdOrden}&{query}");
     }
 
+
     private async Task VisualizarResultadoPDF()
     {
         if (DetalleResultado == null || DetalleResultado.Examenes.Any(e => e.Valor == 0))
         {
-            await JS.InvokeVoidAsync("alert", "PDF.");
+            await JS.InvokeVoidAsync("alert", "No se puede imprimir resultados incompletos.");
             return;
         }
 
@@ -434,5 +418,5 @@ else
 
         await JS.InvokeVoidAsync("imprimirResultados", resultadoObj);
     }
-
 }
+

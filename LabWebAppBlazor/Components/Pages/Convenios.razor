@@ -1,0 +1,265 @@
+﻿@page "/convenios"
+@rendermode InteractiveServer
+@using LabWebAppBlazor.Models
+@using LabWebAppBlazor.Services
+@using Microsoft.AspNetCore.Components.Authorization
+@using System.Security.Claims;
+
+@inject IApiService ApiService
+@inject AuthenticationStateProvider AuthProvider
+@inject IJSRuntime JS
+@inject NavigationManager Navigation
+
+<h3 class="mb-4"><i class="fas fa-handshake me-2"></i>Gestión de Convenios</h3>
+
+@if (!isRendered)
+{
+    <div class="alert alert-info">Cargando interfaz...</div>
+}
+else if (!showContent)
+{
+    <div class="alert alert-danger">No autorizado.</div>
+}
+else
+{
+    <div class="row mb-3 g-2">
+        <div class="col-md-3">
+            <label>Buscar por</label>
+            <InputSelect class="form-control" @bind-Value="criterioBusqueda">
+                <option value="">-- Seleccione --</option>
+                <option value="numero">Número Convenio</option>
+                <option value="medico">Nombre Médico</option>
+            </InputSelect>
+        </div>
+        <div class="col-md-4">
+            <label>Valor</label>
+            <InputText class="form-control" @bind-Value="valorBusqueda" />
+        </div>
+        <div class="col-md-2">
+            <label>Desde</label>
+            <InputDate class="form-control" @bind-Value="fechaDesde" />
+        </div>
+        <div class="col-md-2">
+            <label>Hasta</label>
+            <InputDate class="form-control" @bind-Value="fechaHasta" />
+        </div>
+        <div class="col-md-1 d-flex align-items-end">
+            <button class="btn btn-primary w-100" @onclick="FiltrarConvenios">
+                <i class="fas fa-search"></i>
+            </button>
+        </div>
+        <div class="col-md-12 text-end mt-2">
+            <button class="btn btn-success" @onclick="IrAIngresoConvenio">
+                <i class="fas fa-plus me-1"></i> Registrar Convenio
+            </button>
+        </div>
+    </div>
+
+    @if (convenios == null || convenios.Count == 0)
+    {
+        <div class="alert alert-warning">No se encontraron convenios.</div>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table table-bordered table-hover text-center align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>Número</th>
+                        <th>Médico</th>
+                        <th>Fecha</th>
+                        <th>Total Órdenes</th>
+                        <th>% Comisión</th>
+                        <th>Total Médico</th>
+                        <th>Estado</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var c in convenios)
+                    {
+                        var totalMedico = Math.Round((c.MontoTotal * c.PorcentajeComision / 100), 2);
+                        <tr>
+                            <td>@c.IdConvenio</td>
+                            <td>@c.NombreMedico</td>
+                            <td>@c.FechaConvenio.ToString("dd/MM/yyyy")</td>
+                            <td>@c.MontoTotal.ToString("C")</td>
+                            <td>@c.PorcentajeComision.ToString("0.##")%</td>
+                            <td>@totalMedico.ToString("C")</td>
+                            <td>
+                                <span class="badge bg-@(c.Anulado ? "danger" : "primary")">
+                                    @(c.Anulado ? "Anulado" : "Habilitado")
+                                </span>
+                            </td>
+                            <td>
+                                <button class="btn btn-sm btn-outline-primary me-1" title="Ver"
+                                        @onclick="() => VerConvenio(c.IdConvenio)">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                                @if (!c.Anulado)
+                                {
+                                    <button class="btn btn-sm btn-outline-danger" title="Anular"
+                                            @onclick="() => AnularConvenio(c.IdConvenio)">
+                                        <i class="fas fa-ban"></i>
+                                    </button>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+}
+
+@if (mostrarModal && convenioDetalle is not null)
+{
+    var totalMedico = Math.Round(convenioDetalle.MontoTotal * convenioDetalle.PorcentajeComision / 100, 2);
+    <div class="modal show d-block" style="background-color: rgba(0,0,0,0.4);">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title"><i class="fas fa-info-circle me-2"></i>Detalle de Convenio #@convenioDetalle.IdConvenio</h5>
+                    <button class="btn-close" @onclick="CerrarModal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row mb-2">
+                        <div class="col-md-4"><strong>Médico:</strong> @convenioDetalle.NombreMedico</div>
+                        <div class="col-md-4"><strong>Fecha:</strong> @convenioDetalle.FechaConvenio.ToString("dd/MM/yyyy")</div>
+@*                         <div class="col-md-4"><strong>Usuario:</strong> @convenioDetalle.NombreUsuario</div>
+ *@                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-3"><strong>Total Órdenes:</strong> @convenioDetalle.MontoTotal.ToString("C")</div>
+                        <div class="col-md-3"><strong>% Comisión:</strong> @convenioDetalle.PorcentajeComision.ToString("0.##")%</div>
+                        <div class="col-md-3"><strong>Total Médico:</strong> @totalMedico.ToString("C")</div>
+                        <div class="col-md-3"><strong>Órdenes:</strong> @convenioDetalle.Ordenes.Count()</div>
+                    </div>
+
+                    <div class="table-responsive mt-2">
+                        <table class="table table-sm table-bordered text-center">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Número Orden</th>
+                                    <th>Paciente</th>
+                                    <th>Fecha</th>
+                                    <th>Total</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var orden in convenioDetalle.Ordenes)
+                                {
+                                    <tr>
+                                        <td>@orden.NumeroOrden</td>
+                                        <td>@orden.Paciente</td>
+                                        <td>@orden.FechaOrden?.ToString("dd/MM/yyyy")</td>
+                                        <td>@orden.Total.ToString("C")</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" @onclick="CerrarModal">Cerrar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+
+@code {
+    private List<ConvenioDto> convenios = new();
+    private ConvenioDetalleDto? convenioDetalle;
+    private string criterioBusqueda = "";
+    private string valorBusqueda = "";
+    private DateTime? fechaDesde = null;
+    private DateTime? fechaHasta = null;
+    private bool isRendered = false, showContent = false;
+    private bool mostrarModal = false;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            var auth = await AuthProvider.GetAuthenticationStateAsync();
+            if (!auth.User.Identity?.IsAuthenticated ?? true)
+            {
+                Navigation.NavigateTo("/login", true);
+                return;
+            }
+
+            isRendered = true;
+            showContent = true;
+            await CargarConvenios();
+            StateHasChanged();
+        }
+    }
+
+    private async Task CargarConvenios()
+    {
+        convenios = await ApiService.GetConveniosAsync();
+    }
+
+    private async Task FiltrarConvenios()
+    {
+        var todos = await ApiService.GetConveniosAsync();
+
+        var filtrados = todos.AsEnumerable();
+
+        if (!string.IsNullOrWhiteSpace(criterioBusqueda) && !string.IsNullOrWhiteSpace(valorBusqueda))
+        {
+            var val = valorBusqueda.ToLower();
+
+            filtrados = criterioBusqueda switch
+            {
+                "numero" => filtrados.Where(c => c.IdConvenio.ToString().Contains(val)),
+                "medico" => filtrados.Where(c => c.NombreMedico.ToLower().Contains(val)),
+                _ => filtrados
+            };
+        }
+
+        if (fechaDesde.HasValue)
+            filtrados = filtrados.Where(c => c.FechaConvenio >= DateOnly.FromDateTime(fechaDesde.Value));
+
+        if (fechaHasta.HasValue)
+            filtrados = filtrados.Where(c => c.FechaConvenio <= DateOnly.FromDateTime(fechaHasta.Value));
+
+        convenios = filtrados.ToList();
+    }
+
+    private async Task VerConvenio(int id)
+    {
+        convenioDetalle = await ApiService.GetConvenioDetalleAsync(id);
+        mostrarModal = true;
+    }
+
+    private void CerrarModal()
+    {
+        mostrarModal = false;
+        convenioDetalle = null;
+    }
+
+    private async Task AnularConvenio(int id)
+    {
+        if (!await JS.InvokeAsync<bool>("confirm", "¿Está seguro que desea anular este convenio?")) return;
+
+        var response = await ApiService.AnularConvenioAsync(id);
+        if (response.IsSuccessStatusCode)
+        {
+            await CargarConvenios();
+            await JS.InvokeVoidAsync("alert", "Convenio anulado.");
+        }
+        else
+        {
+            await JS.InvokeVoidAsync("alert", "No se pudo anular el convenio.");
+        }
+    }
+
+    private void IrAIngresoConvenio()
+    {
+        Navigation.NavigateTo("/ingreso_convenio");
+    }
+
+}

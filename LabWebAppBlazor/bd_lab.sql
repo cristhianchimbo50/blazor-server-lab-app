@@ -80,6 +80,7 @@ CREATE TABLE reactivo (
 CREATE TABLE detalle_convenio (
   id_detalle_convenio INT IDENTITY(1,1) PRIMARY KEY,
   id_convenio INT FOREIGN KEY REFERENCES convenio(id_convenio) ON DELETE CASCADE,
+  id_orden INT FOREIGN KEY REFERENCES orden(id_orden) ON DELETE CASCADE,
   subtotal DECIMAL(10, 2) NOT NULL
 );
 

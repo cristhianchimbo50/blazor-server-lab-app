@@ -26,11 +26,24 @@
         <label for="valor">Valor</label>
         <InputText id="valor" class="form-control" @bind-Value="valorBusqueda" />
     </div>
-    <div class="col-md-4 mt-4 d-flex gap-2">
-        <button class="btn btn-primary" @onclick="BuscarReactivos">Buscar</button>
-        <button class="btn btn-success" @onclick="MostrarModalNuevo">Agregar Reactivo</button>
-        <button class="btn btn-secondary" @onclick="@(() => Navigation.NavigateTo("/ingreso-stock"))">Ingresar Stock</button>
+    <div class="col-md-12 mt-4 d-flex flex-wrap gap-2">
+        <button class="btn btn-outline-primary" @onclick="BuscarReactivos" title="Buscar Reactivos">
+            <i class="bi bi-search me-1"></i> Buscar
+        </button>
+        <button class="btn btn-outline-success" @onclick="MostrarModalNuevo" title="Agregar nuevo reactivo">
+            <i class="bi bi-plus-circle me-1"></i> Nuevo
+        </button>
+        <button class="btn btn-outline-info" @onclick="@(() => Navigation.NavigateTo("/ingreso-stock"))" title="Registrar ingreso de stock">
+            <i class="bi bi-box-arrow-in-down me-1"></i> Ingresar Stock
+        </button>
+        <button class="btn btn-outline-danger" @onclick="@(() => Navigation.NavigateTo("/egreso-stock"))" title="Registrar egreso de stock">
+            <i class="bi bi-box-arrow-up me-1"></i> Egresar Stock
+        </button>
+        <button class="btn btn-outline-dark" @onclick="AbrirModalMovimientos" title="Ver historial de movimientos">
+            <i class="bi bi-clock-history me-1"></i> Ver Movimientos
+        </button>
     </div>
+
 </div>
 
 @if (reactivosFiltrados == null || reactivosFiltrados.Count == 0)
@@ -123,6 +136,83 @@ else
                 <div class="modal-footer">
                     <button class="btn btn-primary" @onclick="GuardarReactivoAsync">Guardar</button>
                     <button class="btn btn-secondary" @onclick="CerrarModalNuevo">Cancelar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@if (mostrarModalMovimientos)
+{
+    <div class="modal fade show d-block" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Movimientos de Reactivos</h5>
+                    <button class="btn-close" @onclick="CerrarModalMovimientos"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row g-2 mb-3">
+                        <div class="col-md-3">
+                            <label>Desde</label>
+                            <InputDate class="form-control" @bind-Value="filtroDesde" />
+                        </div>
+                        <div class="col-md-3">
+                            <label>Hasta</label>
+                            <InputDate class="form-control" @bind-Value="filtroHasta" />
+                        </div>
+                        <div class="col-md-3">
+                            <label>Tipo Movimiento</label>
+                            <InputSelect class="form-select" @bind-Value="filtroTipo">
+                                <option value="">Todos</option>
+                                <option value="INGRESO">INGRESO</option>
+                                <option value="EGRESO">EGRESO</option>
+                            </InputSelect>
+                        </div>
+                        <div class="col-md-3 d-flex align-items-end">
+                            <button class="btn btn-primary w-100" @onclick="BuscarMovimientos">
+                                <i class="fas fa-search me-1"></i> Filtrar
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-hover table-sm">
+                            <thead class="table-light text-center">
+                                <tr>
+                                    <th>Reactivo</th>
+                                    <th>Tipo</th>
+                                    <th class="text-end">Cantidad</th>
+                                    <th>Fecha</th>
+                                    <th>N° Orden</th>
+                                    <th>Observación</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var m in movimientosGlobales)
+                                {
+                                    <tr>
+                                        <td>@m.Reactivo</td>
+                                        <td>@m.TipoMovimiento</td>
+                                        <td class="text-end">@m.Cantidad.ToString("N2")</td>
+                                        <td>@m.FechaMovimiento.ToString("yyyy-MM-dd")</td>
+                                        <td>@m.NumeroOrden</td>
+                                        <td>@m.Observacion</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+
+                    @if (!movimientosGlobales.Any())
+                    {
+                        <div class="alert alert-warning mt-2">No hay movimientos registrados.</div>
+                    }
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" @onclick="CerrarModalMovimientos">
+                        <i class="fas fa-times me-1"></i> Cerrar
+                    </button>
                 </div>
             </div>
         </div>
@@ -272,5 +362,48 @@ else
         }
     }
 
+    private bool mostrarModalMovimientos = false;
+    private DateTime? filtroDesde = null;
+    private DateTime? filtroHasta = null;
+    private string filtroTipo = "";
+
+    private List<MovimientoReactivoView> movimientosGlobales = new();
+
+    private void AbrirModalMovimientos()
+    {
+        mostrarModalMovimientos = true;
+        filtroDesde = null;
+        filtroHasta = null;
+        filtroTipo = "";
+        movimientosGlobales.Clear();
+    }
+
+    private void CerrarModalMovimientos()
+    {
+        mostrarModalMovimientos = false;
+    }
+
+    private async Task BuscarMovimientos()
+    {
+        var url = "api/MovimientosReactivos/filtrar";
+
+        var parametros = new List<string>();
+
+        if (filtroDesde.HasValue)
+            parametros.Add($"fechaInicio={filtroDesde:yyyy-MM-dd}");
+
+        if (filtroHasta.HasValue)
+            parametros.Add($"fechaFin={filtroHasta:yyyy-MM-dd}");
+
+        if (!string.IsNullOrWhiteSpace(filtroTipo))
+            parametros.Add($"tipoMovimiento={filtroTipo}");
+
+        if (parametros.Any())
+            url += "?" + string.Join("&", parametros);
+
+        var resultado = await ApiService.ObtenerMovimientosFiltradosAsync(filtroDesde, filtroHasta, filtroTipo);
+
+        movimientosGlobales = resultado ?? new();
+    }
 
 }

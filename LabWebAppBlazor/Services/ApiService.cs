@@ -1,6 +1,7 @@
 ﻿using LabWebAppBlazor.DTOs;
 using LabWebAppBlazor.Models;
 using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage;
+using Microsoft.JSInterop;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
@@ -744,6 +745,72 @@ namespace LabWebAppBlazor.Services
             return await response.Content.ReadFromJsonAsync<ExamenConReactivosDto>();
         }
 
+        public async Task<List<MovimientoReactivoView>> ObtenerMovimientosFiltradosAsync(DateTime? desde, DateTime? hasta, string? tipo)
+        {
+            var url = "MovimientosReactivos/filtrar";
+            var queryParams = new List<string>();
+
+            if (desde.HasValue)
+                queryParams.Add($"fechaInicio={desde.Value:yyyy-MM-dd}");
+
+            if (hasta.HasValue)
+                queryParams.Add($"fechaFin={hasta.Value:yyyy-MM-dd}");
+
+            if (!string.IsNullOrWhiteSpace(tipo))
+                queryParams.Add($"tipoMovimiento={tipo}");
+
+            if (queryParams.Any())
+                url += "?" + string.Join("&", queryParams);
+
+            return await _http.GetFromJsonAsync<List<MovimientoReactivoView>>(url) ?? new();
+        }
+
+        public async Task<T?> GetAsync<T>(string endpoint)
+        {
+            var response = await _http.GetAsync(endpoint);
+            if (response.IsSuccessStatusCode)
+                return await response.Content.ReadFromJsonAsync<T>();
+            return default;
+        }
+
+        public async Task<int> ObtenerIdUsuarioActualAsync(IJSRuntime js)
+        {
+            var tokenResult = await _sessionStorage.GetAsync<LoginResponseDto>("authToken");
+
+            if (!tokenResult.Success || tokenResult.Value == null)
+                throw new InvalidOperationException("No se pudo obtener el token del usuario actual.");
+
+            return tokenResult.Value.IdUsuario;
+        }
+
+        public async Task<bool> PostAsync<T>(string endpoint, T data)
+        {
+            var request = new HttpRequestMessage(HttpMethod.Post, endpoint)
+            {
+                Content = JsonContent.Create(data)
+            };
+
+            if (!await AttachTokenAsync(request))
+                return false;
+
+            var response = await _http.SendAsync(request);
+            return response.IsSuccessStatusCode;
+        }
+
+        public async Task<List<ConvenioDto>> GetConveniosAsync()
+        {
+            return await _http.GetFromJsonAsync<List<ConvenioDto>>("convenios") ?? new();
+        }
+
+        public async Task<ConvenioDetalleDto?> GetConvenioDetalleAsync(int idConvenio)
+        {
+            return await _http.GetFromJsonAsync<ConvenioDetalleDto>($"convenios/{idConvenio}");
+        }
+
+        public async Task<HttpResponseMessage> AnularConvenioAsync(int idConvenio)
+        {
+            return await _http.DeleteAsync($"convenios/{idConvenio}");
+        }
 
 
     }

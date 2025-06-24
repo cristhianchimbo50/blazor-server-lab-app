@@ -1,5 +1,6 @@
 ﻿using LabWebAppBlazor.DTOs;
 using LabWebAppBlazor.Models;
+using Microsoft.JSInterop;
 
 namespace LabWebAppBlazor.Services
 {
@@ -92,6 +93,18 @@ namespace LabWebAppBlazor.Services
         Task<ExamenDto?> ObtenerExamenPorIdAsync(int id);
 
         Task<ExamenConReactivosDto?> ObtenerExamenConReactivosAsync(int id);
+
+        Task<List<MovimientoReactivoView>> ObtenerMovimientosFiltradosAsync(DateTime? desde, DateTime? hasta, string? tipo);
+
+        Task<T?> GetAsync<T>(string endpoint);
+
+        Task<int> ObtenerIdUsuarioActualAsync(IJSRuntime js);
+
+        Task<bool> PostAsync<T>(string endpoint, T data);
+
+        Task<List<ConvenioDto>> GetConveniosAsync();
+        Task<ConvenioDetalleDto?> GetConvenioDetalleAsync(int idConvenio);
+        Task<HttpResponseMessage> AnularConvenioAsync(int idConvenio);
 
 
     }

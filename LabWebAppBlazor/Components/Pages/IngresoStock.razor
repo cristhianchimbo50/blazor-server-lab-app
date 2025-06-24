@@ -5,94 +5,120 @@
 @using Microsoft.AspNetCore.Components.Authorization
 @using System.Security.Claims;
 
-
 @inject IApiService ApiService
 @inject AuthenticationStateProvider AuthProvider
 @inject NavigationManager Navigation
 @inject IJSRuntime JS
 
+<h3 class="mb-4"><i class="bi bi-box-arrow-in-down me-2"></i>Ingreso de Stock</h3>
 
-<h3 class="mb-3">Ingreso de Stock</h3>
-
-<div class="mb-3">
-    <label>Fecha de Ingreso</label>
-    <InputDate class="form-control" @bind-Value="fechaIngreso" />
+<div class="card shadow-sm mb-4">
+    <div class="card-body">
+        <label class="form-label fw-semibold">Fecha de Ingreso</label>
+        <InputDate class="form-control" @bind-Value="fechaIngreso" />
+    </div>
 </div>
 
-<div class="row">
+<div class="row g-4">
     <div class="col-md-6">
-        <h5>Reactivos disponibles</h5>
-        <div class="table-responsive" style="max-height: 300px; overflow-y: auto;">
-            <table class="table table-bordered table-sm table-hover">
-                <thead class="table-light">
-                    <tr>
-                        <th>Nombre</th>
-                        <th>Fabricante</th>
-                        <th>Unidad</th>
-                        <th class="text-end">Stock</th>
-                        <th class="text-center">Seleccionado</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var r in todosReactivos)
-                    {
-                        <tr @ondblclick="() => SeleccionarReactivo(r)">
-                            <td>@r.NombreReactivo</td>
-                            <td>@r.Fabricante</td>
-                            <td>@r.Unidad</td>
-                            <td class="text-end">@r.CantidadDisponible.ToString("N2")</td>
-                            <td class="text-center">
-                                @(reactivosSeleccionados.Any(x => x.IdReactivo == r.IdReactivo) ? "Sí" : "")
-                            </td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
+        <div class="card shadow-sm h-100">
+            <div class="card-header bg-light fw-semibold">
+                <i class="bi bi-clipboard-data me-2"></i>Reactivos Disponibles
+            </div>
+            <div class="card-body p-2">
+                <div class="table-responsive" style="max-height: 350px; overflow-y: auto;">
+                    <table class="table table-sm table-hover table-bordered align-middle">
+                        <thead class="table-light text-center">
+                            <tr>
+                                <th>Nombre</th>
+                                <th>Fabricante</th>
+                                <th>Unidad</th>
+                                <th class="text-end">Stock</th>
+                                <th>Seleccionado</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var r in todosReactivos)
+                            {
+                                <tr @ondblclick="() => SeleccionarReactivo(r)">
+                                    <td>@r.NombreReactivo</td>
+                                    <td>@r.Fabricante</td>
+                                    <td>@r.Unidad</td>
+                                    <td class="text-end">@r.CantidadDisponible.ToString("N2")</td>
+                                    <td class="text-center">
+                                        @if (reactivosSeleccionados.Any(x => x.IdReactivo == r.IdReactivo))
+                                        {
+                                            <span class="badge bg-primary">
+                                                <i class="bi bi-check-lg text-white"></i> Seleccionado
+                                            </span>
+                                        }
+                                    </td>
+
+                            </tr>
+                                                        }
+                        </tbody>
+                    </table>
+                </div>
+                <small class="text-muted">* Doble clic para seleccionar.</small>
+            </div>
         </div>
     </div>
 
     <div class="col-md-6">
-        <h5>Reactivos seleccionados para ingreso</h5>
-        <div class="table-responsive">
-            <table class="table table-bordered table-sm">
-                <thead class="table-light">
-                    <tr>
-                        <th>Nombre</th>
-                        <th>Cantidad a Ingresar</th>
-                        <th>Unidad</th>
-                        <th></th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var r in reactivosSeleccionados)
-                    {
+        <div class="card shadow-sm h-100">
+            <div class="card-header bg-light fw-semibold">
+                <i class="bi bi-cart-plus me-2"></i>Reactivos Seleccionados para Ingreso
+            </div>
+            <div class="card-body p-2">
+                <table class="table table-sm table-bordered align-middle">
+                    <thead class="table-light text-center">
                         <tr>
-                            <td>@r.NombreReactivo</td>
-                            <td>
-                                <InputNumber class="form-control form-control-sm"
-                                             @bind-Value="r.Cantidad"
-                                             Min="0.01" Step="0.01" />
-                            </td>
-                            <td>@r.Unidad</td>
-                            <td>
-                                <button class="btn btn-sm btn-outline-danger"
-                                        @onclick="() => QuitarReactivo(r.IdReactivo)">
-                                    <i class="bi bi-x-lg"></i>
-                                </button>
-                            </td>
+                            <th>Reactivo</th>
+                            <th style="width: 30%;">Cantidad</th>
+                            <th>Unidad</th>
+                            <th></th>
                         </tr>
-                    }
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody>
+                        @foreach (var r in reactivosSeleccionados)
+                        {
+                            <tr>
+                                <td>@r.NombreReactivo</td>
+                                <td>
+                                    <InputNumber class="form-control form-control-sm text-end"
+                                                 @bind-Value="r.Cantidad"
+                                                 Min="0.01" Step="0.01" />
+                                </td>
+                                <td>@r.Unidad</td>
+                                <td class="text-center">
+                                    <button class="btn btn-sm btn-outline-danger"
+                                            title="Quitar"
+                                            @onclick="() => QuitarReactivo(r.IdReactivo)">
+                                        <i class="bi bi-x-lg"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+
+                @if (!reactivosSeleccionados.Any())
+                {
+                    <div class="alert alert-info text-center mt-3">No hay reactivos seleccionados.</div>
+                }
+            </div>
         </div>
     </div>
 </div>
 
-<div class="mt-4">
-    <button class="btn btn-primary" @onclick="GuardarMovimientosAsync" disabled="@(!reactivosSeleccionados.Any())">
-        Guardar Ingresos
+<div class="mt-4 text-end">
+    <button class="btn btn-primary"
+            @onclick="GuardarMovimientosAsync"
+            disabled="@(!reactivosSeleccionados.Any())">
+        <i class="bi bi-save2 me-1"></i>Guardar Ingresos
     </button>
 </div>
+
 
 @code {
     private List<ReactivoDto> todosReactivos = new();

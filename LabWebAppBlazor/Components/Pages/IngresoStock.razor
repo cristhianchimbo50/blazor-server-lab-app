@@ -23,7 +23,7 @@
     <div class="col-md-6">
         <div class="card shadow-sm h-100">
             <div class="card-header bg-light fw-semibold">
-                <i class="bi bi-clipboard-data me-2"></i>Reactivos Disponibles
+                <i class="bi bi-clipboard-data me-2"></i> Reactivos Disponibles
             </div>
             <div class="card-body p-2">
                 <div class="table-responsive" style="max-height: 350px; overflow-y: auto;">
@@ -40,22 +40,22 @@
                         <tbody>
                             @foreach (var r in todosReactivos)
                             {
-                                <tr @ondblclick="() => SeleccionarReactivo(r)">
+                                var seleccionado = reactivosSeleccionados.Any(x => x.IdReactivo == r.IdReactivo);
+                                <tr @ondblclick="() => SeleccionarReactivo(r)" class="@(seleccionado ? "table-primary" : "")">
                                     <td>@r.NombreReactivo</td>
                                     <td>@r.Fabricante</td>
                                     <td>@r.Unidad</td>
                                     <td class="text-end">@r.CantidadDisponible.ToString("N2")</td>
                                     <td class="text-center">
-                                        @if (reactivosSeleccionados.Any(x => x.IdReactivo == r.IdReactivo))
+                                        @if (seleccionado)
                                         {
                                             <span class="badge bg-primary">
                                                 <i class="bi bi-check-lg text-white"></i> Seleccionado
                                             </span>
                                         }
                                     </td>
-
-                            </tr>
-                                                        }
+                                </tr>
+                            }
                         </tbody>
                     </table>
                 </div>
@@ -67,7 +67,7 @@
     <div class="col-md-6">
         <div class="card shadow-sm h-100">
             <div class="card-header bg-light fw-semibold">
-                <i class="bi bi-cart-plus me-2"></i>Reactivos Seleccionados para Ingreso
+                <i class="bi bi-cart-plus me-2"></i> Reactivos Seleccionados para Ingreso
             </div>
             <div class="card-body p-2">
                 <table class="table table-sm table-bordered align-middle">
@@ -104,7 +104,9 @@
 
                 @if (!reactivosSeleccionados.Any())
                 {
-                    <div class="alert alert-info text-center mt-3">No hay reactivos seleccionados.</div>
+                    <div class="alert alert-info text-center mt-3">
+                        <i class="bi bi-info-circle me-2"></i> No hay reactivos seleccionados.
+                    </div>
                 }
             </div>
         </div>
@@ -115,16 +117,14 @@
     <button class="btn btn-primary"
             @onclick="GuardarMovimientosAsync"
             disabled="@(!reactivosSeleccionados.Any())">
-        <i class="bi bi-save2 me-1"></i>Guardar Ingresos
+        <i class="bi bi-save2 me-1"></i> Guardar Ingresos
     </button>
 </div>
-
 
 @code {
     private List<ReactivoDto> todosReactivos = new();
     private List<MovimientoReactivoDto> reactivosSeleccionados = new();
     private DateTime fechaIngreso = DateTime.Now;
-
     private bool datosCargados = false;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -138,19 +138,18 @@
         }
     }
 
-
     private void SeleccionarReactivo(ReactivoDto reactivo)
     {
         if (!reactivosSeleccionados.Any(r => r.IdReactivo == reactivo.IdReactivo))
         {
             reactivosSeleccionados.Add(new MovimientoReactivoDto
-                {
-                    IdReactivo = reactivo.IdReactivo,
-                    NombreReactivo = reactivo.NombreReactivo,
-                    Unidad = reactivo.Unidad,
-                    Cantidad = 0,
-                    FechaMovimiento = fechaIngreso
-                });
+            {
+                IdReactivo = reactivo.IdReactivo,
+                NombreReactivo = reactivo.NombreReactivo,
+                Unidad = reactivo.Unidad,
+                Cantidad = 0,
+                FechaMovimiento = fechaIngreso
+            });
         }
     }
 
@@ -158,9 +157,7 @@
     {
         var reactivo = reactivosSeleccionados.FirstOrDefault(r => r.IdReactivo == id);
         if (reactivo is not null)
-        {
             reactivosSeleccionados.Remove(reactivo);
-        }
     }
 
     private async Task GuardarMovimientosAsync()
@@ -175,7 +172,6 @@
         {
             mov.TipoMovimiento = "INGRESO";
             mov.Observacion = "Ingreso manual de stock";
-            mov.Cantidad = mov.Cantidad;
         }
 
         var result = await ApiService.RegistrarMovimientosAsync(reactivosSeleccionados);

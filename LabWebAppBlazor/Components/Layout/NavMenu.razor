@@ -1,77 +1,90 @@
-﻿﻿<div class="top-row ps-3 navbar navbar-dark">
-    <div class="container-fluid">
-        <a class="navbar-brand" href="">LabWebAppBlazor</a>
-    </div>
+﻿@using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage
+@inject NavigationManager Navigation
+@inject CustomAuthenticationStateProvider AuthProvider
+@inject ProtectedSessionStorage SessionStorage
+
+<div class="top-row ps-3 navbar navbar-dark align-items-center justify-content-between">
+    <img src="images/logo-inmaculada.png" alt="Logo Inmaculada" class="logo-inmaculada" />
 </div>
 
 <input type="checkbox" title="Navigation menu" class="navbar-toggler" />
 
 <div class="nav-scrollable" onclick="document.querySelector('.navbar-toggler').click()">
     <nav class="flex-column">
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="home" Match="NavLinkMatch.All">
-                <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> Home
-            </NavLink>
-        </div>
+        @foreach (var item in menuItems)
+        {
+            <div class="nav-item px-3 border-bottom-light">
+                <NavLink class="nav-link" href="@item.Url" Match="NavLinkMatch.All">
+                    <i class="@item.IconClass me-2"></i> @item.Label
+                </NavLink>
+            </div>
+        }
 
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="registrar-usuario">
-                <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Registrar Usuarios
-            </NavLink>
-        </div>
+        @if (isRendered && !string.IsNullOrEmpty(nombreUsuario))
+        {
+            <div class="nav-item px-3 mt-3 text-muted small">
+                <i class="bi bi-person-circle me-1"></i> @nombreUsuario
+            </div>
+        }
 
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="pacientes" Match="NavLinkMatch.All">
-                <span class="bi bi-list-nested-nav-menu oi oi-people" aria-hidden="true"></span> Pacientes
-            </NavLink>
-        </div>
-
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="medicos" Match="NavLinkMatch.All">
-                <span class="bi bi-list-nested-nav-menu oi oi-people" aria-hidden="true"></span> Medicos
-            </NavLink>
-        </div>
-
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="reactivos" Match="NavLinkMatch.All">
-                <span class="bi bi-list-nested-nav-menu oi oi-people" aria-hidden="true"></span> Reactivos
-            </NavLink>
-        </div>
-
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="examenes" Match="NavLinkMatch.All">
-                <span class="bi bi-list-nested-nav-menu oi oi-people" aria-hidden="true"></span> Examenes
-            </NavLink>
-        </div>
-
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="asociaciones-reactivos" Match="NavLinkMatch.All">
-                <span class="bi bi-list-nested-nav-menu oi oi-people" aria-hidden="true"></span> Examen - Reactivo
-            </NavLink>
-        </div>
-
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="ordenes" Match="NavLinkMatch.All">
-                <span class="bi bi-list-nested-nav-menu oi oi-people" aria-hidden="true"></span> Ordenes
-            </NavLink>
-        </div>
-
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="resultados" Match="NavLinkMatch.All">
-                <span class="bi bi-list-nested-nav-menu oi oi-people" aria-hidden="true"></span> Resultados
-            </NavLink>
-        </div>
-
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="convenios" Match="NavLinkMatch.All">
-                <span class="bi bi-list-nested-nav-menu oi oi-people" aria-hidden="true"></span> Convenios
-            </NavLink>
-        </div>
-
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="cuentasporcobrar" Match="NavLinkMatch.All">
-                <span class="bi bi-list-nested-nav-menu oi oi-people" aria-hidden="true"></span> Cuentas por Cobrar
-            </NavLink>
+        <div class="nav-item px-3 mt-4 border-top pt-3">
+            <button class="btn btn-outline-danger w-100 text-start" @onclick="CerrarSesion">
+                <i class="bi bi-box-arrow-right me-2"></i> Cerrar sesión
+            </button>
         </div>
     </nav>
 </div>
+
+@code {
+    private List<MenuItem> menuItems = new()
+    {
+        new MenuItem("home", "bi bi-house-door-fill", "Home"),
+        new MenuItem("registrar-usuario", "bi bi-person-plus-fill", "Registrar Usuarios"),
+        new MenuItem("pacientes", "bi bi-people-fill", "Pacientes"),
+        new MenuItem("medicos", "bi bi-person-badge-fill", "Médicos"),
+        new MenuItem("reactivos", "bi bi-capsule-pill", "Reactivos"),
+        new MenuItem("examenes", "bi bi-file-medical-fill", "Exámenes"),
+        new MenuItem("asociaciones-reactivos", "bi bi-diagram-3-fill", "Examen - Reactivo"),
+        new MenuItem("ordenes", "bi bi-clipboard-data-fill", "Órdenes"),
+        new MenuItem("resultados", "bi bi-clipboard-check-fill", "Resultados"),
+        new MenuItem("convenios", "bi bi-journal-check", "Convenios"),
+        new MenuItem("cuentasporcobrar", "bi bi-cash-stack", "Cuentas por Cobrar")
+    };
+
+    private record MenuItem(string Url, string IconClass, string Label);
+
+    private bool isRendered = false;
+    private string? nombreUsuario;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            isRendered = true;
+
+            try
+            {
+                var sessionResult = await SessionStorage.GetAsync<LoginResponseDto>("authToken");
+                if (sessionResult.Success && sessionResult.Value is not null)
+                {
+                    nombreUsuario = sessionResult.Value.Nombre;
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error recuperando sesión en NavMenu: {ex.Message}");
+            }
+
+            StateHasChanged();
+        }
+    }
+
+    private async Task CerrarSesion()
+    {
+        Console.WriteLine("🔴 Botón de cerrar sesión presionado");
+
+        await AuthProvider.SignOutAsync();
+        Navigation.NavigateTo("/login", forceLoad: true);
+    }
+
+}

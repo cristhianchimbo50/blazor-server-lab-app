@@ -15,156 +15,174 @@
 
 @if (ordenesPorCobrar is null)
 {
-    <div class="alert alert-info">Cargando órdenes del paciente...</div>
+    <div class="alert alert-info text-center">
+        <i class="bi bi-hourglass-split me-2"></i> Cargando órdenes del paciente...
+    </div>
 }
 else
 {
-    <div class="row">
-        <div class="col-md-6">
-            <label><strong>Cédula del Paciente:</strong></label>
-            
-            <input class="form-control mb-2" value="@cedula" disabled />
-
-            <label><strong>Nombre del Paciente:</strong></label>
-            <input class="form-control mb-2" value="@nombrePaciente" disabled />
-
-            <h5>Detalle de Cuentas por Cobrar:</h5>
-            <div class="table-responsive" style="max-height: 300px; overflow-y: auto;">
-                <table class="table table-bordered table-sm table-hover">
-                    <thead class="table-light">
-                        <tr>
-                            <th>Número</th>
-                            <th>Fecha</th>
-                            <th>Total</th>
-                            <th>Pagado</th>
-                            <th>Saldo</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach (var orden in ordenesPorCobrar)
-                        {
-                            <tr @ondblclick="@(() => SeleccionarOrden(orden))">
-                                <td>@orden.NumeroOrden</td>
-                                <td>@orden.FechaOrden.ToShortDateString()</td>
-                                <td>@orden.Total.ToString("C")</td>
-                                <td>@orden.TotalPagado.ToString("C")</td>
-                                <td class="text-danger fw-bold">@orden.SaldoPendiente.ToString("C")</td>
-                            </tr>
-                        }
-                    </tbody>
-                </table>
+    <div class="row g-4">
+        <!-- Información del paciente y órdenes -->
+        <div class="col-lg-6">
+            <div class="card shadow-sm border-0">
+                <div class="card-body">
+                    <h5 class="card-title mb-3 text-primary">
+                        <i class="bi bi-person-badge me-2"></i>Paciente
+                    </h5>
+                    <div class="mb-2">
+                        <label class="form-label">Cédula:</label>
+                        <input class="form-control" value="@cedula" disabled />
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label">Nombre:</label>
+                        <input class="form-control" value="@nombrePaciente" disabled />
+                    </div>
+                    <h6 class="mt-4 text-secondary">Órdenes por cobrar</h6>
+                    <div class="table-responsive" style="max-height: 250px; overflow-y: auto;">
+                        <table class="table table-sm table-hover table-bordered text-center align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Número</th>
+                                    <th>Fecha</th>
+                                    <th>Total</th>
+                                    <th>Pagado</th>
+                                    <th>Saldo</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var orden in ordenesPorCobrar)
+                                {
+                                    <tr @ondblclick="@(() => SeleccionarOrden(orden))" class="cursor-pointer">
+                                        <td>@orden.NumeroOrden</td>
+                                        <td>@orden.FechaOrden.ToShortDateString()</td>
+                                        <td>@orden.Total.ToString("C")</td>
+                                        <td>@orden.TotalPagado.ToString("C")</td>
+                                        <td class="text-danger fw-bold">@orden.SaldoPendiente.ToString("C")</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
         </div>
 
-        <div class="col-md-6">
-            <h5>Órdenes Pendientes:</h5>
-            <div class="table-responsive" style="max-height: 200px; overflow-y: auto;">
-                <table class="table table-bordered table-sm table-hover">
-                    <thead class="table-light">
-                        <tr>
-                            <th>Número</th>
-                            <th>Saldo</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach (var orden in ordenesSeleccionadas)
-                        {
-                            <tr @ondblclick="@(() => QuitarOrden(orden))">
-                                <td>@orden.NumeroOrden</td>
-                                <td>@orden.SaldoPendiente.ToString("C")</td>
-                            </tr>
-                        }
-                    </tbody>
-                </table>
-            </div>
+        <!-- Órdenes seleccionadas y pagos -->
+        <div class="col-lg-6">
+            <div class="card shadow-sm border-0 mb-4">
+                <div class="card-body">
+                    <h6 class="text-secondary mb-3">Órdenes Seleccionadas</h6>
+                    <div class="table-responsive" style="max-height: 200px;">
+                        <table class="table table-sm table-bordered table-hover align-middle text-center">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Número</th>
+                                    <th>Saldo</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var orden in ordenesSeleccionadas)
+                                {
+                                    <tr @ondblclick="@(() => QuitarOrden(orden))">
+                                        <td>@orden.NumeroOrden</td>
+                                        <td>@orden.SaldoPendiente.ToString("C")</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
 
-            <h5 class="mt-3">Pagos Recibidos:</h5>
-            <div class="table-responsive" style="max-height: 200px; overflow-y: auto;">
-                <table class="table table-bordered table-sm table-striped">
-                    <thead class="table-light">
-                        <tr>
-                            <th>Fecha</th>
-                            <th>Tipo</th>
-                            <th>Monto</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach (var pago in pagosPrevios)
-                        {
-                            <tr>
-                                <td>@pago.FechaPago?.ToString("dd/MM/yyyy")</td>
-                                <td>@pago.TipoPago</td>
-                                <td>@pago.Monto?.ToString("C")</td>
-                            </tr>
-                        }
-                    </tbody>
-                </table>
+                    <h6 class="mt-4 text-secondary">Pagos Recibidos</h6>
+                    <div class="table-responsive" style="max-height: 200px;">
+                        <table class="table table-sm table-striped table-bordered align-middle text-center">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Fecha</th>
+                                    <th>Tipo</th>
+                                    <th>Monto</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var pago in pagosPrevios)
+                                {
+                                    <tr>
+                                        <td>@pago.FechaPago?.ToString("dd/MM/yyyy")</td>
+                                        <td>@pago.TipoPago</td>
+                                        <td>@pago.Monto?.ToString("C")</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 
-    <hr />
-
+    <!-- Totales -->
     <div class="row mt-3">
         <div class="col-md-4">
-            <label><strong>Total Deuda:</strong></label>
+            <label class="form-label fw-bold">Total Deuda:</label>
             <input class="form-control" value="@totalDeuda.ToString("C")" disabled />
         </div>
         <div class="col-md-4">
-            <label><strong>Total Pagos:</strong></label>
+            <label class="form-label fw-bold">Total Pagos:</label>
             <input class="form-control" value="@totalPagos.ToString("C")" disabled />
         </div>
         <div class="col-md-4">
-            <label><strong>Total Saldo:</strong></label>
+            <label class="form-label fw-bold">Total Saldo:</label>
             <input class="form-control" value="@totalSaldoSeleccionado.ToString("C")" disabled />
         </div>
     </div>
 
-    <div class="text-end mt-4 d-flex justify-content-end gap-3">
+    <!-- Acciones -->
+    <div class="d-flex justify-content-end gap-3 mt-4">
         <button class="btn btn-success" @onclick="MostrarModalCobro" disabled="@(ordenesSeleccionadas.Count == 0)">
-            <i class="bi bi-cash-coin"></i> Cobrar
+            <i class="bi bi-cash-coin me-1"></i> Cobrar
         </button>
-
-
         <button class="btn btn-outline-secondary" @onclick="IrACuentasPorCobrar">
-            <i class="bi bi-arrow-return-left"></i> Salir
+            <i class="bi bi-arrow-return-left me-1"></i> Salir
         </button>
     </div>
 }
 
+
 @if (mostrarModalCobro)
 {
     <div class="modal fade show d-block" style="background-color: rgba(0,0,0,0.5);">
-        <div class="modal-dialog">
+        <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Registrar Cobro</h5>
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title">
+                        <i class="bi bi-wallet2 me-2"></i>Registrar Cobro
+                    </h5>
                     <button type="button" class="btn-close" @onclick="CerrarModalCobro"></button>
                 </div>
                 <div class="modal-body">
-                    <div class="mb-2">
-                        <label>Dinero Efectivo</label>
+                    <div class="mb-3">
+                        <label class="form-label">Dinero en Efectivo</label>
                         <InputNumber class="form-control" @bind-Value="dineroEfectivo" />
                     </div>
-                    <div class="mb-2">
-                        <label>Transferencia</label>
+                    <div class="mb-3">
+                        <label class="form-label">Transferencia</label>
                         <InputNumber class="form-control" @bind-Value="transferencia" />
                     </div>
 
-                    <div class="mt-3">
-                        <p><strong>Total Cobro:</strong> @totalCobro.ToString("C")</p>
-                        <p><strong>Total Saldo:</strong> @totalSaldoSeleccionado.ToString("C")</p>
-                        <p>
-                            <strong>Total Restante:</strong>
-                            <span class="@( (totalSaldoSeleccionado - totalCobro) > 0 ? "text-danger fw-bold" : "")">
-                                @((totalSaldoSeleccionado - totalCobro).ToString("C"))
-                            </span>
-                        </p>
+                    <hr />
 
-                    </div>
+                    <p><strong>Total Cobro:</strong> @totalCobro.ToString("C")</p>
+                    <p><strong>Total Saldo:</strong> @totalSaldoSeleccionado.ToString("C")</p>
+                    <p>
+                        <strong>Total Restante:</strong>
+                        <span class="@( (totalSaldoSeleccionado - totalCobro) > 0 ? "text-danger fw-bold" : "text-success fw-bold")">
+                            @((totalSaldoSeleccionado - totalCobro).ToString("C"))
+                        </span>
+                    </p>
                 </div>
                 <div class="modal-footer">
-                    <button class="btn btn-primary" @onclick="RegistrarCobroAsync">Cobrar</button>
+                    <button class="btn btn-primary" @onclick="RegistrarCobroAsync">
+                        <i class="bi bi-cash-stack me-1"></i> Cobrar
+                    </button>
                     <button class="btn btn-secondary" @onclick="CerrarModalCobro">Cancelar</button>
                 </div>
             </div>

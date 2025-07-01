@@ -3,12 +3,11 @@
 @attribute [AllowAnonymous]
 @layout EmptyLayout
 
-
 @using LabWebAppBlazor.Components.Layout
-@using System.Web
-@using System.Security.Claims
 @using LabWebAppBlazor.Models
 @using Microsoft.AspNetCore.Components.Authorization
+@using System.Web
+@using System.Security.Claims
 
 @inject NavigationManager Navigation
 @inject AuthenticationStateProvider AuthProvider
@@ -16,44 +15,54 @@
 @rendermode InteractiveServer
 
 <div class="container d-flex align-items-center justify-content-center vh-100">
-    <div class="row w-100 shadow-lg rounded p-4" style="max-width: 900px; background-color: white;">
-        <div class="col-md-6 d-none d-md-block text-center">
-            <img src="images/login-art.png" class="img-fluid" alt="Login Illustration" />
+    <div class="row w-100 shadow-lg rounded p-4 bg-white" style="max-width: 900px;">
+        <div class="col-md-6 d-none d-md-flex align-items-center justify-content-center">
+            <img src="images/login-art.png" class="img-fluid rounded" alt="Ilustración de inicio de sesión" />
         </div>
         <div class="col-md-6">
-            <h3 class="mb-4 fw-bold">Iniciar Sesión</h3>
+            <h3 class="mb-4 fw-bold text-primary">
+                <i class="bi bi-person-circle me-2"></i>Iniciar Sesión
+            </h3>
+
             <EditForm Model="@loginModel" OnValidSubmit="HandleLogin">
                 <DataAnnotationsValidator />
                 <ValidationSummary />
 
                 <div class="mb-3">
-                    <label for="correo" class="form-label">Correo</label>
-                    <InputText id="correo" @bind-Value="loginModel.CorreoUsuario" class="form-control" />
+                    <label for="correo" class="form-label">Correo electrónico</label>
+                    <InputText id="correo" class="form-control" @bind-Value="loginModel.CorreoUsuario" />
                 </div>
 
                 <div class="mb-3">
                     <label for="clave" class="form-label">Contraseña</label>
-                    <InputText id="clave" @bind-Value="loginModel.Clave" type="password" class="form-control" />
+                    <InputText id="clave" type="password" class="form-control" @bind-Value="loginModel.Clave" />
                 </div>
 
                 @if (!string.IsNullOrEmpty(error))
                 {
-                    <div class="alert alert-danger" role="alert">@error</div>
+                    <div class="alert alert-danger" role="alert">
+                        <i class="bi bi-exclamation-triangle me-2"></i>@error
+                    </div>
                 }
 
-                <button type="submit" class="btn btn-primary w-100">Ingresar</button>
-                <br />
-                <button type="submit" class="btn btn-primary w-100">Recuperar Contraseña</button>
+                <button type="submit" class="btn btn-primary w-100 mb-2">
+                    <i class="bi bi-box-arrow-in-right me-1"></i>Ingresar
+                </button>
+
+                <button type="button" class="btn btn-outline-secondary w-100"
+                        @onclick="@(() => Navigation.NavigateTo("/recuperar-clave"))">
+                    <i class="bi bi-question-circle me-1"></i>¿Olvidó su contraseña?
+                </button>
             </EditForm>
         </div>
     </div>
 </div>
 
 @code {
-    private bool isRendered = false;
     private LoginRequestDto loginModel = new();
     private string? error;
     private string? redirectUrl;
+    private bool isRendered = false;
 
     private int intentosFallidos = 0;
     private int maxIntentos = 3;
@@ -61,7 +70,6 @@
     private int segundosEspera = 30;
     private DateTime? horaDesbloqueo;
     private Timer? temporizador;
-
 
     protected override void OnInitialized()
     {
@@ -95,7 +103,7 @@
             {
                 loginBloqueado = true;
                 horaDesbloqueo = DateTime.Now.AddSeconds(segundosEspera);
-                error = $"Demasiados intentos fallidos. Intente nuevamente en {segundosEspera} segundos.";
+                error = $"Demasiados intentos fallidos. Espere {segundosEspera} segundos.";
                 IniciarTemporizadorDesbloqueo();
             }
             else
@@ -112,7 +120,7 @@
         {
             await customAuth.SignInAsync(result);
             customAuth.ForceReauthentication();
-            await Task.Delay(1000);
+            await Task.Delay(800);
 
             var authState = await AuthProvider.GetAuthenticationStateAsync();
             var user = authState.User;
@@ -125,8 +133,8 @@
                 }
                 else
                 {
-                    var redirect = string.IsNullOrEmpty(redirectUrl) ? "/home" : redirectUrl!;
-                    Navigation.NavigateTo(redirect, forceLoad: true);
+                    var destino = string.IsNullOrEmpty(redirectUrl) ? "/home" : redirectUrl!;
+                    Navigation.NavigateTo(destino, forceLoad: true);
                 }
             }
             else
@@ -148,6 +156,4 @@
             await InvokeAsync(StateHasChanged);
         }, null, segundosEspera * 1000, Timeout.Infinite);
     }
-
-
 }

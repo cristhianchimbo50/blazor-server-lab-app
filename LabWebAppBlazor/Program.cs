@@ -16,6 +16,8 @@ builder.Services.AddHttpClient("Api", client =>
 
 builder.Services.AddScoped<ProtectedSessionStorage>();
 builder.Services.AddScoped<AuthenticationStateProvider, CustomAuthenticationStateProvider>();
+builder.Services.AddScoped<CustomAuthenticationStateProvider>();
+
 
 
 builder.Services.AddAuthorizationCore();

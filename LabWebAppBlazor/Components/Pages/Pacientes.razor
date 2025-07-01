@@ -10,161 +10,178 @@
 @inject AuthenticationStateProvider AuthProvider
 @inject NavigationManager Navigation
 
-<h3>Gestión de Pacientes</h3>
 
-@if (!isRendered)
-{
-    <p>Cargando interfaz...</p>
-}
-else if (!showContent)
-{
-    <p>No autorizado.</p>
-}
-else
-{
-    <div class="mb-3 row">
-        <div class="col-md-3">
-            <label>Buscar por</label>
-            <InputSelect class="form-control" @bind-Value="criterioBusqueda">
-                <option value="">-- Seleccione --</option>
-                <option value="cedula">Cédula</option>
-                <option value="nombre">Nombre</option>
-                <option value="edad">Edad</option>
-                <option value="direccion">Dirección</option>
-                <option value="correo">Correo</option>
-                <option value="telefono">Teléfono</option>
-            </InputSelect>
-        </div>
-        <div class="col-md-5">
-            <label>Valor</label>
-            <InputText class="form-control" @bind-Value="valorBusqueda" />
-        </div>
-        <div class="col-md-4 mt-4">
-            <button class="btn btn-primary" @onclick="BuscarPacientes">Buscar</button>
-            <button class="btn btn-success ms-2" @onclick="MostrarModal">Agregar Paciente</button>
-        </div>
-    </div>
+    <h3 class="mb-4">
+        <i class="fas fa-users me-2 text-primary"></i>Gestión de Pacientes
+    </h3>
 
-    @if (ListaPacientes == null || ListaPacientes.Count == 0)
+    @if (!isRendered)
     {
-        <p>No se encontraron pacientes.</p>
+        <div class="alert alert-info">Cargando interfaz...</div>
+    }
+    else if (!showContent)
+    {
+        <div class="alert alert-danger">No autorizado.</div>
     }
     else
     {
-        <table class="table table-striped">
-            <thead>
-                <tr>
-                    <th>Cédula</th>
-                    <th>Nombre</th>
-                    <th>Edad</th>
-                    <th>Dirección</th>
-                    <th>Correo</th>
-                    <th>Teléfono</th>
-                    <th>Estado</th>
-                    <th>Acciones</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var paciente in ListaPacientes)
-                {
-                    <tr>
-                        <td>@paciente.CedulaPaciente</td>
-                        <td>@paciente.NombrePaciente</td>
-                        <td>@paciente.EdadPaciente</td>
-                        <td>@paciente.DireccionPaciente</td>
-                        <td>@paciente.CorreoElectronicoPaciente</td>
-                        <td>@paciente.TelefonoPaciente</td>
-                        <td>@(paciente.Anulado == true ? "Anulado" : "Activo")</td>
-                        <td>
-                            @if (!(paciente.Anulado ?? false))
-                            {
-                                <button class="btn btn-sm btn-warning me-2" @onclick="() => EditarPaciente(paciente)">Editar</button>
+        <div class="row mb-4 g-3 align-items-end">
+            <div class="col-md-3">
+                <label class="form-label">Buscar por</label>
+                <InputSelect class="form-select" @bind-Value="criterioBusqueda">
+                    <option value="">-- Seleccione --</option>
+                    <option value="cedula">Cédula</option>
+                    <option value="nombre">Nombre</option>
+                    <option value="edad">Edad</option>
+                    <option value="direccion">Dirección</option>
+                    <option value="correo">Correo</option>
+                    <option value="telefono">Teléfono</option>
+                </InputSelect>
+            </div>
+            <div class="col-md-5">
+                <label class="form-label">Valor</label>
+                <InputText class="form-control" @bind-Value="valorBusqueda" />
+            </div>
+            <div class="col-md-4 d-grid gap-2 d-md-flex justify-content-md-end">
+                <button class="btn btn-primary" @onclick="BuscarPacientes">
+                    <i class="bi bi-search"></i> Buscar
+                </button>
+                <button class="btn btn-success" @onclick="MostrarModal">
+                    <i class="bi bi-person-plus-fill"></i> Agregar Paciente
+                </button>
+            </div>
+        </div>
 
-                                @if (EsAdmin)
-                                {
-                                    <button class="btn btn-sm btn-danger" @onclick="() => ConfirmarAnulacion(paciente.IdPaciente)">Anular</button>
-                                }
-                            }
-                            else
-                            {
-                                @if (EsAdmin)
-                                {
-                                    <button class="btn btn-sm btn-success" @onclick="() => ConfirmarReactivacion(paciente)">Activar</button>
-                                }
-                                else
-                                {
-                                    <span class="text-muted">Sin acciones</span>
-                                }
-                            }
-                        </td>
+        @if (ListaPacientes is null || ListaPacientes.Count == 0)
+        {
+            <div class="alert alert-warning">No se encontraron pacientes.</div>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table table-hover table-bordered align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Cédula</th>
+                            <th>Nombre</th>
+                            <th>Edad</th>
+                            <th>Dirección</th>
+                            <th>Correo</th>
+                            <th>Teléfono</th>
+                            <th>Estado</th>
+                            <th class="text-center">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var paciente in ListaPacientes)
+                        {
+                            <tr>
+                                <td>@paciente.CedulaPaciente</td>
+                                <td>@paciente.NombrePaciente</td>
+                                <td>@paciente.EdadPaciente</td>
+                                <td>@paciente.DireccionPaciente</td>
+                                <td>@paciente.CorreoElectronicoPaciente</td>
+                                <td>@paciente.TelefonoPaciente</td>
+                                <td>
+                                    <span class="badge bg-@(paciente.Anulado == true ? "danger" : "success")">
+                                        @(paciente.Anulado == true ? "Deshabilitado" : "Habilitado")
+                                    </span>
+                                </td>
+                                <td class="text-center">
+                                    @if (!(paciente.Anulado ?? false))
+                                    {
+                                        <button class="btn btn-warning btn-sm me-1 shadow-sm" title="Editar" @onclick="() => EditarPaciente(paciente)">
+                                            <i class="bi bi-pencil-square text-black"></i>
+                                        </button>
+                                        @if (EsAdmin)
+                                        {
+                                            <button class="btn btn-danger btn-sm shadow-sm" title="Anular" @onclick="() => ConfirmarAnulacion(paciente.IdPaciente)">
+                                                <span class="text-white fw-bold">X</span>
+                                            </button>
+                                        }
+                                    }
+                                    else
+                                    {
+                                        @if (EsAdmin)
+                                        {
+                                            <button class="btn btn-success btn-sm shadow-sm" title="Activar" @onclick="() => ConfirmarReactivacion(paciente)">
+                                                <i class="bi bi-check-circle-fill"></i>
+                                            </button>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">Sin acciones</span>
+                                        }
+                                    }
+                                </td>
 
-                    </tr>
-                }
-            </tbody>
-        </table>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
     }
-}
+
 
 <!-- Modal -->
-<div class="modal fade @(modalVisible ? "show d-block" : "")" tabindex="-1" style="background-color: rgba(0,0,0,0.4);">
+<div class="modal fade @(modalVisible ? "show d-block" : "")" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <EditForm Model="@PacienteActual" OnValidSubmit="ValidarYGuardar">
-                <div class="modal-header">
-                    <h5 class="modal-title">Paciente</h5>
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title">
+                        <i class="bi bi-person-circle me-2"></i>
+                        @(PacienteActual.IdPaciente == 0 ? "Nuevo Paciente" : "Editar Paciente")
+                    </h5>
                     <button type="button" class="btn-close" @onclick="CerrarModal"></button>
                 </div>
                 <div class="modal-body">
                     <DataAnnotationsValidator />
                     <ValidationSummary />
 
-                    <div class="mb-3">
-                        <label>Cédula</label>
-                        <InputText class="form-control"
-                                   Value="@PacienteActual.CedulaPaciente"
-                                   ValueChanged="(v) => PacienteActual.CedulaPaciente = FiltrarSoloNumeros(v)"
-                                   ValueExpression="() => PacienteActual.CedulaPaciente"
-                                   disabled="@(!EsAdmin && PacienteActual.IdPaciente != 0)" />
-
-
-                    </div>
-
-                    <div class="mb-3">
-                        <label>Nombre</label>
-                        <InputText class="form-control"
-                                   Value="@PacienteActual.NombrePaciente"
-                                   ValueChanged="(v) => PacienteActual.NombrePaciente = FormatearNombre(v)"
-                                   ValueExpression="() => PacienteActual.NombrePaciente" />
-                    </div>
-
-                    <div class="mb-3">
-                        <label>Fecha de Nacimiento</label>
-                        <InputDate class="form-control" @bind-Value="PacienteActual.FechaNacPaciente"
-                                   disabled="@(!EsAdmin && PacienteActual.IdPaciente != 0)" />
-
-                    </div>
-
-                    <div class="mb-3">
-                        <label>Dirección</label>
-                        <InputText class="form-control" @bind-Value="PacienteActual.DireccionPaciente" />
-                    </div>
-
-                    <div class="mb-3">
-                        <label>Correo</label>
-                        <InputText class="form-control" @bind-Value="PacienteActual.CorreoElectronicoPaciente" />
-                    </div>
-
-                    <div class="mb-3">
-                        <label>Teléfono</label>
-                        <InputText class="form-control"
-                                   Value="@PacienteActual.TelefonoPaciente"
-                                   ValueChanged="(v) => PacienteActual.TelefonoPaciente = FiltrarSoloNumeros(v)"
-                                   ValueExpression="() => PacienteActual.TelefonoPaciente" />
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Cédula</label>
+                            <InputText class="form-control" Value="@PacienteActual.CedulaPaciente"
+                                       ValueChanged="(v) => PacienteActual.CedulaPaciente = FiltrarSoloNumeros(v)"
+                                       ValueExpression="() => PacienteActual.CedulaPaciente"
+                                       disabled="@(!EsAdmin && PacienteActual.IdPaciente != 0)" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Nombre</label>
+                            <InputText class="form-control" Value="@PacienteActual.NombrePaciente"
+                                       ValueChanged="(v) => PacienteActual.NombrePaciente = FormatearNombre(v)"
+                                       ValueExpression="() => PacienteActual.NombrePaciente" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Fecha de Nacimiento</label>
+                            <InputDate class="form-control" @bind-Value="PacienteActual.FechaNacPaciente"
+                                       disabled="@(!EsAdmin && PacienteActual.IdPaciente != 0)" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Teléfono</label>
+                            <InputText class="form-control" Value="@PacienteActual.TelefonoPaciente"
+                                       ValueChanged="(v) => PacienteActual.TelefonoPaciente = FiltrarSoloNumeros(v)"
+                                       ValueExpression="() => PacienteActual.TelefonoPaciente" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Correo</label>
+                            <InputText class="form-control" @bind-Value="PacienteActual.CorreoElectronicoPaciente" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Dirección</label>
+                            <InputText class="form-control" @bind-Value="PacienteActual.DireccionPaciente" />
+                        </div>
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="submit" class="btn btn-primary">Guardar</button>
-                    <button type="button" class="btn btn-secondary" @onclick="CerrarModal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-save-fill me-1"></i> Guardar
+                    </button>
+                    <button type="button" class="btn btn-secondary" @onclick="CerrarModal">
+                        <i class="bi bi-x-lg me-1"></i> Cancelar
+                    </button>
                 </div>
             </EditForm>
         </div>

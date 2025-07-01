@@ -4,23 +4,29 @@
 @using LabWebAppBlazor.Services
 @using Microsoft.AspNetCore.Components.Authorization
 @using System.Security.Claims;
+
 @inject IApiService ApiService
 @inject IJSRuntime JS
 @inject AuthenticationStateProvider AuthProvider
 @inject NavigationManager Navigation
 
-<h3>Gestión de Médicos</h3>
+<h3 class="mb-4">
+    <i class="fas fa-user-md me-2 text-primary"></i>Gestión de Médicos
+</h3>
 
 @if (!isRendered)
 {
-    <p>Cargando interfaz...</p>
+    <div class="d-flex align-items-center text-primary">
+        <div class="spinner-border me-2" role="status"></div>
+        <strong>Cargando interfaz...</strong>
+    </div>
 }
 else
 {
     <div class="row mb-3">
         <div class="col-md-3">
-            <label>Buscar por</label>
-            <InputSelect class="form-control" @bind-Value="criterioBusqueda">
+            <label class="form-label">Buscar por</label>
+            <InputSelect class="form-select" @bind-Value="criterioBusqueda">
                 <option value="">-- Seleccione --</option>
                 <option value="nombre">Nombre</option>
                 <option value="especialidad">Especialidad</option>
@@ -29,66 +35,87 @@ else
             </InputSelect>
         </div>
         <div class="col-md-5">
-            <label>Valor</label>
+            <label class="form-label">Valor</label>
             <InputText class="form-control" @bind-Value="valorBusqueda" />
         </div>
-        <div class="col-md-4 mt-4">
-            <button class="btn btn-primary" @onclick="BuscarMedicos">Buscar</button>
-            <button class="btn btn-success ms-2" @onclick="MostrarModal">Agregar Médico</button>
+        <div class="col-md-4 d-flex align-items-end gap-2">
+            <button class="btn btn-primary" @onclick="BuscarMedicos" title="Buscar médico">
+                <i class="fas fa-search me-1"></i>Buscar
+            </button>
+            <button class="btn btn-success" @onclick="MostrarModal" title="Agregar nuevo médico">
+                <i class="fas fa-plus-circle me-1"></i>Agregar Médico
+            </button>
         </div>
     </div>
 
     @if (ListaMedicos is null || !ListaMedicos.Any())
     {
-        <p>No se encontraron médicos.</p>
+        <div class="alert alert-warning text-center">
+            <i class="fas fa-exclamation-circle me-2"></i>No se encontraron médicos.
+        </div>
     }
     else
     {
-        <table class="table table-bordered">
-            <thead class="table-light">
-                <tr>
-                    <th>Nombre</th>
-                    <th>Especialidad</th>
-                    <th>Teléfono</th>
-                    <th>Correo</th>
-                    <th>Estado</th>
-                    <th>Acciones</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var medico in ListaMedicos)
-                {
+        <div class="table-responsive">
+            <table class="table table-bordered table-hover align-middle">
+                <thead class="table-light text-center">
                     <tr>
-                        <td>@medico.NombreMedico</td>
-                        <td>@medico.Especialidad</td>
-                        <td>@medico.Telefono</td>
-                        <td>@medico.Correo</td>
-                        <td>@(medico.Anulado ? "Anulado" : "Activo")</td>
-                        <td>
-                            @if (!medico.Anulado)
-                            {
-                                <button class="btn btn-sm btn-warning me-2" @onclick="() => EditarMedico(medico)">Editar</button>
-                                <button class="btn btn-sm btn-danger" @onclick="() => ConfirmarAnulacion(medico.IdMedico)">Anular</button>
-                            }
-                            else
-                            {
-                                <button class="btn btn-sm btn-success" @onclick="() => ConfirmarReactivacion(medico.IdMedico)">Activar</button>
-                            }
-                        </td>
+                        <th>Nombre</th>
+                        <th>Especialidad</th>
+                        <th>Teléfono</th>
+                        <th>Correo</th>
+                        <th>Estado</th>
+                        <th>Acciones</th>
                     </tr>
-                }
-            </tbody>
-        </table>
+                </thead>
+                <tbody>
+                    @foreach (var medico in ListaMedicos)
+                    {
+                        <tr class="@(medico.Anulado ? "table-danger" : "")">
+                            <td>@medico.NombreMedico</td>
+                            <td>@medico.Especialidad</td>
+                            <td>@medico.Telefono</td>
+                            <td>@medico.Correo</td>
+                            <td class="text-center">
+                                <span class="badge bg-@(medico.Anulado ? "danger" : "success")">
+                                    @(medico.Anulado ? "Deshabilitado" : "Habilitado")
+                                </span>
+                            </td>
+                            <td class="text-center">
+                                @if (!medico.Anulado)
+                                {
+                                    <button class="btn btn-warning btn-sm me-2 shadow-sm" title="Editar" @onclick="() => EditarMedico(medico)">
+                                        <i class="bi bi-pencil-square text-dark"></i>
+                                    </button>
+                                    <button class="btn btn-danger btn-sm shadow-sm" title="Anular" @onclick="() => ConfirmarAnulacion(medico.IdMedico)">
+                                        <span class="fw-bold text-white">X</span>
+                                    </button>
+                                }
+                                else
+                                {
+                                    <button class="btn btn-success btn-sm shadow-sm" title="Activar" @onclick="() => ConfirmarReactivacion(medico.IdMedico)">
+                                        <i class="bi bi-check-circle-fill"></i>
+                                    </button>
+                                }
+                            </td>
+
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
     }
 }
 
 <!-- Modal -->
-<div class="modal fade @(modalVisible ? "show d-block" : "")" tabindex="-1" style="background-color: rgba(0,0,0,0.4);">
+<div class="modal fade @(modalVisible ? "show d-block" : "")" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
     <div class="modal-dialog">
         <div class="modal-content">
             <EditForm Model="@MedicoActual" OnValidSubmit="GuardarMedico">
                 <div class="modal-header">
-                    <h5 class="modal-title">@(MedicoActual.IdMedico == 0 ? "Agregar Médico" : "Editar Médico")</h5>
+                    <h5 class="modal-title">
+                        <i class="fas fa-user-md me-2"></i>@(MedicoActual.IdMedico == 0 ? "Agregar Médico" : "Editar Médico")
+                    </h5>
                     <button type="button" class="btn-close" @onclick="CerrarModal"></button>
                 </div>
                 <div class="modal-body">
@@ -96,25 +123,29 @@ else
                     <ValidationSummary />
 
                     <div class="mb-3">
-                        <label>Nombre</label>
+                        <label class="form-label">Nombre</label>
                         <InputText class="form-control" @bind-Value="MedicoActual.NombreMedico" />
                     </div>
                     <div class="mb-3">
-                        <label>Especialidad</label>
+                        <label class="form-label">Especialidad</label>
                         <InputText class="form-control" @bind-Value="MedicoActual.Especialidad" />
                     </div>
                     <div class="mb-3">
-                        <label>Teléfono</label>
+                        <label class="form-label">Teléfono</label>
                         <InputText class="form-control" @bind-Value="MedicoActual.Telefono" />
                     </div>
                     <div class="mb-3">
-                        <label>Correo</label>
+                        <label class="form-label">Correo</label>
                         <InputText class="form-control" @bind-Value="MedicoActual.Correo" />
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="submit" class="btn btn-primary">Guardar</button>
-                    <button type="button" class="btn btn-secondary" @onclick="CerrarModal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save me-1"></i>Guardar
+                    </button>
+                    <button type="button" class="btn btn-secondary" @onclick="CerrarModal">
+                        <i class="fas fa-times me-1"></i>Cancelar
+                    </button>
                 </div>
             </EditForm>
         </div>
@@ -160,14 +191,14 @@ else
     private void EditarMedico(MedicoDto medico)
     {
         MedicoActual = new MedicoDto
-            {
-                IdMedico = medico.IdMedico,
-                NombreMedico = medico.NombreMedico,
-                Especialidad = medico.Especialidad,
-                Telefono = medico.Telefono,
-                Correo = medico.Correo,
-                Anulado = medico.Anulado
-            };
+        {
+            IdMedico = medico.IdMedico,
+            NombreMedico = medico.NombreMedico,
+            Especialidad = medico.Especialidad,
+            Telefono = medico.Telefono,
+            Correo = medico.Correo,
+            Anulado = medico.Anulado
+        };
         modalVisible = true;
     }
 

@@ -5,16 +5,11 @@
 @using Microsoft.AspNetCore.Components.Authorization
 
 <div class="page">
-    <div class="sidebar">
+    <div class="sidebar bg-sidebar">
         <NavMenu />
     </div>
 
-    <main>
-        @* <div class="top-row px-4 d-flex justify-content-between align-items-center">
-            <a href="https://learn.microsoft.com/aspnet/core/" target="_blank">About</a>
-            <button class="btn btn-link text-danger" @onclick="CerrarSesion">Cerrar sesión</button>
-        </div> *@
-
+    <main class="bg-main">
         <article class="content px-4">
             <main class="flex-fill p-4">
                 @Body
@@ -34,10 +29,7 @@
     <script src="ticket.js"></script>
     <script src="resulado.js"></script>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet" />
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
-
-
 </HeadContent>
 
 @code {
@@ -51,4 +43,3 @@
         }
     }
 }
-

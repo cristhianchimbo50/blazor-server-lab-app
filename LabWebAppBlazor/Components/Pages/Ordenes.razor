@@ -10,7 +10,7 @@
 @inject NavigationManager Navigation
 @inject IJSRuntime JS
 
-<h3 class="mb-4"><i class="fas fa-file-medical-alt me-2"></i>Gestión de Órdenes</h3>
+<h4 class="mb-4"><i class="fas fa-file-medical me-2 text-primary"></i>Gestión de Órdenes</h4>
 
 @if (!isRendered)
 {
@@ -81,21 +81,24 @@ else
                             <td>@orden.TotalPagado.ToString("C")</td>
                             <td>@orden.SaldoPendiente.ToString("C")</td>
                             <td>
-                                <span class="badge bg-@(orden.EstadoPago == "Cancelado" ? "success" : "warning")">
+                                <span class="badge bg-@(orden.EstadoPago == "PAGADO" ? "success" : "warning")">
                                     @orden.EstadoPago
                                 </span>
                             </td>
                             <td>
-                                <span class="badge bg-@(orden.Anulado ? "danger" : "primary")">
-                                    @(orden.Anulado ? "Anulado" : "Activo")
+                                <span class="badge bg-@(orden.Anulado ? "danger" : "success")">
+                                    @(orden.Anulado ? "Deshabilitado" : "Habilitado")
                                 </span>
                             </td>
                             <td>
-                                <button class="btn btn-sm btn-outline-primary" title="Ver Detalles"
+                                <button class="btn btn-sm text-white shadow-sm btn-hover-shadow"
+                                        style="background-color: #007bff; border-radius: 0.5rem;"
+                                        title="Ver Detalles"
                                         @onclick="() => VerDetalleOrden(orden.IdOrden)">
                                     <i class="fas fa-eye"></i>
                                 </button>
                             </td>
+
                         </tr>
                     }
                 </tbody>
@@ -305,30 +308,6 @@ else
             mostrarDetalleOrden = false;
     }
 
-
-    private async Task ValidarExamenesSeleccionados()
-    {
-        if (DetalleActual is null) return;
-
-        var seleccionados = DetalleActual.Examenes.Where(e => e.Seleccionado).ToList();
-
-        if (!seleccionados.Any())
-        {
-            await JS.InvokeVoidAsync("alert", "Debe seleccionar al menos un examen.");
-            return;
-        }
-
-        var estudio = seleccionados.First().NombreEstudio;
-
-        if (seleccionados.Any(e => e.NombreEstudio != estudio))
-        {
-            await JS.InvokeVoidAsync("alert", "Todos los exámenes seleccionados deben pertenecer al mismo estudio.");
-            return;
-        }
-
-        await JS.InvokeVoidAsync("alert", "Exámenes válidos....");
-    }
-
     private async Task MostrarTicketPreview()
     {
         await JS.InvokeVoidAsync("imprimirTicket");
@@ -368,7 +347,6 @@ else
             return;
         }
 
-        // Validar que todos los seleccionados pertenezcan al mismo estudio
         var estudio = seleccionados.First().NombreEstudio;
         if (seleccionados.Any(e => e.NombreEstudio != estudio))
         {
@@ -376,7 +354,6 @@ else
             return;
         }
 
-        // Validar que no falten exámenes del mismo estudio sin seleccionar
         var noSeleccionadosDelMismoEstudio = todos
             .Where(e => !e.Seleccionado && e.NombreEstudio == estudio)
             .ToList();
@@ -390,7 +367,6 @@ else
         var query = string.Join("&", seleccionados.Select(e => $"idsExamenes={e.IdExamen}"));
         Navigation.NavigateTo($"/resultados/ingresar?idOrden={DetalleActual.IdOrden}&{query}");
     }
-
 
     private async Task VisualizarResultadoPDF()
     {
@@ -419,4 +395,3 @@ else
         await JS.InvokeVoidAsync("imprimirResultados", resultadoObj);
     }
 }
-

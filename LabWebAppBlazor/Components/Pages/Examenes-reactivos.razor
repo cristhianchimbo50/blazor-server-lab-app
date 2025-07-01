@@ -12,20 +12,22 @@
 @inject NavigationManager Navigation
 @inject IJSRuntime JS
 
-<div class="container-fluid mt-3">
-    <h3 class="mb-4">
-        <i class="fas fa-vials me-2"></i>Asociar Reactivos a Examen
+
+    <h3 class="mb-4 d-flex align-items-center">
+        <i class="fas fa-vials text-primary me-2 fs-4"></i> Asociar Reactivos a Examen
     </h3>
 
-    <div class="row g-3 mb-4">
-        <div class="col-md-8">
-            <label class="form-label fw-semibold">Examen Seleccionado</label>
-            <input class="form-control" value="@examenSeleccionado?.NombreExamen" disabled placeholder="Seleccione un examen..." />
-        </div>
-        <div class="col-md-4 d-flex align-items-end">
-            <button class="btn btn-primary w-100" @onclick="MostrarModalExamen">
-                <i class="fas fa-search me-1"></i> Buscar Examen
-            </button>
+    <div class="card shadow-sm mb-4">
+        <div class="card-body row g-3">
+            <div class="col-md-8">
+                <label class="form-label fw-semibold">Examen Seleccionado</label>
+                <input class="form-control" value="@examenSeleccionado?.NombreExamen" disabled placeholder="Seleccione un examen..." />
+            </div>
+            <div class="col-md-4 d-flex align-items-end">
+                <button class="btn btn-primary w-100" @onclick="MostrarModalExamen">
+                    <i class="fas fa-search me-1"></i> Buscar Examen
+                </button>
+            </div>
         </div>
     </div>
 
@@ -71,14 +73,13 @@
             </button>
         </div>
     }
-</div>
 
-<!-- Modal Buscar Examen -->
+<!-- MODAL BUSCAR EXAMEN -->
 @if (mostrarModalExamen)
 {
     <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0, 0, 0, 0.5);">
         <div class="modal-dialog modal-lg modal-dialog-centered">
-            <div class="modal-content">
+            <div class="modal-content shadow-lg">
                 <div class="modal-header">
                     <h5 class="modal-title">Buscar Examen</h5>
                     <button type="button" class="btn-close" @onclick="() => mostrarModalExamen = false"></button>
@@ -104,23 +105,25 @@
                             </button>
                         </div>
                     </div>
-                    <table class="table table-bordered table-hover align-middle text-center">
-                        <thead>
-                            <tr>
-                                <th>Nombre</th>
-                                <th>Estudio</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach (var ex in examenesEncontrados)
-                            {
-                                <tr @ondblclick="@(() => SeleccionarExamen(ex))" style="cursor:pointer">
-                                    <td>@ex.NombreExamen</td>
-                                    <td>@ex.Estudio</td>
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-hover text-center align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Nombre</th>
+                                    <th>Estudio</th>
                                 </tr>
-                            }
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody>
+                                @foreach (var ex in examenesEncontrados)
+                                {
+                                    <tr @ondblclick="@(() => SeleccionarExamen(ex))" style="cursor:pointer">
+                                        <td>@ex.NombreExamen</td>
+                                        <td>@ex.Estudio</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
                 <div class="modal-footer">
                     <button class="btn btn-secondary" @onclick="() => mostrarModalExamen = false">
@@ -132,12 +135,12 @@
     </div>
 }
 
-<!-- Modal Buscar Reactivo -->
+<!-- MODAL BUSCAR REACTIVO -->
 @if (mostrarModalReactivo)
 {
     <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0, 0, 0, 0.5);">
         <div class="modal-dialog modal-lg modal-dialog-centered">
-            <div class="modal-content">
+            <div class="modal-content shadow-lg">
                 <div class="modal-header">
                     <h5 class="modal-title">Buscar Reactivo</h5>
                     <button type="button" class="btn-close" @onclick="() => mostrarModalReactivo = false"></button>
@@ -163,25 +166,27 @@
                             </button>
                         </div>
                     </div>
-                    <table class="table table-bordered table-hover align-middle text-center">
-                        <thead>
-                            <tr>
-                                <th>Nombre</th>
-                                <th>Fabricante</th>
-                                <th>Unidad</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach (var r in reactivosEncontrados)
-                            {
-                                <tr @ondblclick="@(() => SeleccionarReactivo(r))" style="cursor:pointer">
-                                    <td>@r.NombreReactivo</td>
-                                    <td>@r.Fabricante</td>
-                                    <td>@r.Unidad</td>
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-hover text-center align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Nombre</th>
+                                    <th>Fabricante</th>
+                                    <th>Unidad</th>
                                 </tr>
-                            }
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody>
+                                @foreach (var r in reactivosEncontrados)
+                                {
+                                    <tr @ondblclick="@(() => SeleccionarReactivo(r))" style="cursor:pointer">
+                                        <td>@r.NombreReactivo</td>
+                                        <td>@r.Fabricante</td>
+                                        <td>@r.Unidad</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
                 <div class="modal-footer">
                     <button class="btn btn-secondary" @onclick="() => mostrarModalReactivo = false">
@@ -192,6 +197,7 @@
         </div>
     </div>
 }
+
 
 @code {
     private ExamenDto? examenSeleccionado;

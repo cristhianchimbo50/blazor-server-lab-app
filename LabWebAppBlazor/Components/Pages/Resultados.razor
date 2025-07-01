@@ -14,7 +14,6 @@
     <i class="fas fa-vial me-2 text-primary"></i>Visualización de Resultados
 </h3>
 
-
 @if (!isRendered)
 {
     <div class="d-flex align-items-center text-primary">
@@ -32,8 +31,8 @@ else
 {
     <div class="row mb-3">
         <div class="col-md-3">
-            <label>Buscar por</label>
-            <InputSelect class="form-control" @bind-Value="criterioBusqueda">
+            <label class="form-label">Buscar por</label>
+            <InputSelect class="form-select" @bind-Value="criterioBusqueda">
                 <option value="">-- Seleccione --</option>
                 <option value="numero">Número de Resultado</option>
                 <option value="cedula">Cédula</option>
@@ -43,10 +42,10 @@ else
             </InputSelect>
         </div>
         <div class="col-md-5">
-            <label>Valor</label>
+            <label class="form-label">Valor</label>
             <InputText class="form-control" @bind-Value="valorBusqueda" />
         </div>
-        <div class="col-md-4 mt-4 d-flex gap-2">
+        <div class="col-md-4 d-flex align-items-end gap-2">
             <button class="btn btn-primary" @onclick="BuscarResultados" title="Buscar resultados">
                 <i class="fas fa-search me-1"></i>Buscar
             </button>
@@ -54,7 +53,6 @@ else
                 <i class="fas fa-eraser me-1"></i>Limpiar
             </button>
         </div>
-
     </div>
 
     @if (listaResultados == null || !listaResultados.Any())
@@ -66,8 +64,8 @@ else
     else
     {
         <div class="table-responsive">
-            <table class="table table-hover table-bordered">
-                <thead class="table-light">
+            <table class="table table-hover table-bordered align-middle">
+                <thead class="table-light text-center">
                     <tr>
                         <th>Número</th>
                         <th>Cédula</th>
@@ -85,17 +83,20 @@ else
                             <td>@r.CedulaPaciente</td>
                             <td>@r.NombrePaciente</td>
                             <td>@r.FechaResultado.ToString("dd/MM/yyyy")</td>
-                            <td>
+                            <td class="text-center">
                                 <span class="badge bg-@(r.Anulado ? "danger" : "success")">
-                                    @(r.Anulado ? "Anulado" : "Activo")
+                                    @(r.Anulado ? "Deshabilitado" : "Habilitado")
                                 </span>
                             </td>
-                            <td>
-                                <button class="btn btn-sm btn-outline-primary" title="Ver Detalle"
+                            <td class="text-center">
+                                <button class="btn btn-sm text-white shadow-sm"
+                                        style="background-color: #007bff; border-radius: 0.5rem;"
+                                        title="Ver Detalle"
                                         @onclick="() => VerDetalleResultado(r.IdResultado)">
                                     <i class="fas fa-eye"></i>
                                 </button>
                             </td>
+
                         </tr>
                     }
                 </tbody>
@@ -117,7 +118,6 @@ else
                     <button class="btn-close" @onclick="CerrarDetalle"></button>
                 </div>
                 <div class="modal-body">
-
                     @if (DetalleActual.Anulado)
                     {
                         <div class="alert alert-danger text-center fw-bold">
@@ -126,14 +126,23 @@ else
                     }
 
                     <div class="row mb-3">
-                        <div class="col-md-3"><label>Cédula</label><input class="form-control" value="@DetalleActual.CedulaPaciente" disabled /></div>
-                        <div class="col-md-5"><label>Paciente</label><input class="form-control" value="@DetalleActual.NombrePaciente" disabled /></div>
-                        <div class="col-md-4"><label>Fecha Resultado</label><input class="form-control" value="@DetalleActual.FechaResultado.ToString("dd/MM/yyyy")" disabled /></div>
+                        <div class="col-md-3">
+                            <label class="form-label">Cédula</label>
+                            <input class="form-control" value="@DetalleActual.CedulaPaciente" disabled />
+                        </div>
+                        <div class="col-md-5">
+                            <label class="form-label">Paciente</label>
+                            <input class="form-control" value="@DetalleActual.NombrePaciente" disabled />
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Fecha Resultado</label>
+                            <input class="form-control" value="@DetalleActual.FechaResultado.ToString("dd/MM/yyyy")" disabled />
+                        </div>
                     </div>
 
-                    <h5>Exámenes Realizados</h5>
+                    <h5 class="mb-2">Exámenes Realizados</h5>
                     <table class="table table-striped table-bordered">
-                        <thead>
+                        <thead class="table-light">
                             <tr>
                                 <th>Examen</th>
                                 <th>Valor</th>
@@ -153,17 +162,16 @@ else
                             }
                         </tbody>
                     </table>
-
                 </div>
+
                 @if (!DetalleActual.Anulado)
                 {
-                    <div class="mt-3 text-end">
+                    <div class="modal-footer">
                         <button class="btn btn-danger" @onclick="AnularResultado">
                             <i class="fas fa-ban me-1"></i>Anular Resultado
                         </button>
                     </div>
                 }
-
             </div>
         </div>
     </div>
@@ -175,7 +183,6 @@ else
     private ClaimsPrincipal? user;
 
     private List<ResultadoDto> listaResultados = new();
-
     private string criterioBusqueda = "";
     private string valorBusqueda = "";
 
@@ -209,7 +216,6 @@ else
 
     private async Task BuscarResultados()
     {
-        // Aquí deberías usar ApiService.BuscarResultadosAsync si existe
         await CargarResultados();
 
         if (!string.IsNullOrWhiteSpace(criterioBusqueda) && !string.IsNullOrWhiteSpace(valorBusqueda))
@@ -249,8 +255,7 @@ else
 
     private async Task AnularResultado()
     {
-        if (DetalleActual is null)
-            return;
+        if (DetalleActual is null) return;
 
         bool confirmar = await JS.InvokeAsync<bool>("SwalConfirm", "¿Está seguro que desea anular este resultado?");
         if (!confirmar) return;
@@ -269,5 +274,4 @@ else
             await JS.InvokeVoidAsync("alert", "Error al anular el resultado.");
         }
     }
-
 }

@@ -3,104 +3,113 @@
 @using LabWebAppBlazor.Models
 @using LabWebAppBlazor.Services
 @using Microsoft.AspNetCore.Components.Authorization
-@using System.Security.Claims;
+@using System.Security.Claims
 
 @inject IApiService ApiService
 @inject AuthenticationStateProvider AuthProvider
 @inject NavigationManager Navigation
 @inject IJSRuntime JS
 
-<h3>Listado de Reactivos</h3>
-
-<div class="row mb-3">
-    <div class="col-md-3">
-        <label for="criterio">Buscar por</label>
-        <InputSelect id="criterio" class="form-control" @bind-Value="criterioBusqueda">
-            <option value="">-- Seleccione --</option>
-            <option value="nombre">Nombre</option>
-            <option value="fabricante">Fabricante</option>
-            <option value="unidad">Unidad</option>
-        </InputSelect>
-    </div>
-    <div class="col-md-5">
-        <label for="valor">Valor</label>
-        <InputText id="valor" class="form-control" @bind-Value="valorBusqueda" />
-    </div>
-    <div class="col-md-12 mt-4 d-flex flex-wrap gap-2">
-        <button class="btn btn-outline-primary" @onclick="BuscarReactivos" title="Buscar Reactivos">
-            <i class="bi bi-search me-1"></i> Buscar
-        </button>
-        <button class="btn btn-outline-success" @onclick="MostrarModalNuevo" title="Agregar nuevo reactivo">
-            <i class="bi bi-plus-circle me-1"></i> Nuevo
-        </button>
-        <button class="btn btn-outline-info" @onclick="@(() => Navigation.NavigateTo("/ingreso-stock"))" title="Registrar ingreso de stock">
-            <i class="bi bi-box-arrow-in-down me-1"></i> Ingresar Stock
-        </button>
-        <button class="btn btn-outline-danger" @onclick="@(() => Navigation.NavigateTo("/egreso-stock"))" title="Registrar egreso de stock">
-            <i class="bi bi-box-arrow-up me-1"></i> Egresar Stock
-        </button>
-        <button class="btn btn-outline-dark" @onclick="AbrirModalMovimientos" title="Ver historial de movimientos">
-            <i class="bi bi-clock-history me-1"></i> Ver Movimientos
-        </button>
+    <div class="d-flex align-items-center mb-4">
+        <i class="fas fa-vial text-primary fs-3 me-2"></i>
+        <h3 class="mb-0">Gestión de Reactivos</h3>
     </div>
 
-</div>
+    <!-- Filtros -->
+    <div class="row g-3 align-items-end mb-4">
+        <div class="col-md-3">
+            <label class="form-label">Buscar por</label>
+            <InputSelect class="form-select" @bind-Value="criterioBusqueda">
+                <option value="">-- Seleccione --</option>
+                <option value="nombre">Nombre</option>
+                <option value="fabricante">Fabricante</option>
+                <option value="unidad">Unidad</option>
+            </InputSelect>
+        </div>
+        <div class="col-md-5">
+            <label class="form-label">Valor</label>
+            <InputText class="form-control" @bind-Value="valorBusqueda" />
+        </div>
+        <div class="col-md-4 d-flex flex-wrap gap-2">
+            <button class="btn btn-outline-primary" @onclick="BuscarReactivos" title="Buscar">
+                <i class="bi bi-search me-1"></i>Buscar
+            </button>
+            <button class="btn btn-outline-secondary" @onclick="LimpiarFiltro" title="Limpiar">
+                <i class="bi bi-eraser me-1"></i>Limpiar
+            </button>
+            <button class="btn btn-success" @onclick="MostrarModalNuevo" title="Nuevo">
+                <i class="bi bi-plus-circle me-1"></i>Nuevo
+            </button>
+            <div class="btn-group">
+                <button class="btn btn-info" @onclick="@(() => Navigation.NavigateTo("/ingreso-stock"))" title="Ingreso">
+                    <i class="bi bi-box-arrow-in-down"></i>
+                </button>
+                <button class="btn btn-danger" @onclick="@(() => Navigation.NavigateTo("/egreso-stock"))" title="Egreso">
+                    <i class="bi bi-box-arrow-up"></i>
+                </button>
+                <button class="btn btn-dark" @onclick="AbrirModalMovimientos" title="Movimientos">
+                    <i class="bi bi-clock-history"></i>
+                </button>
+            </div>
+        </div>
+    </div>
 
-@if (reactivosFiltrados == null || reactivosFiltrados.Count == 0)
-{
-    <div class="alert alert-warning">No se encontraron reactivos con los filtros aplicados.</div>
-}
-else
-{
-    <div class="table-responsive">
-        <table class="table table-bordered table-hover table-striped table-sm">
-            <thead class="table-light">
-                <tr>
-                    <th>Nombre</th>
-                    <th>Fabricante</th>
-                    <th>Unidad</th>
-                    <th class="text-end">Stock Disponible</th>
-                    <th class="text-center">Estado</th>
-                    <th class="text-center">Acciones</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var r in reactivosFiltrados)
-                {
+    <!-- Tabla -->
+    @if (reactivosFiltrados?.Count > 0)
+    {
+        <div class="table-responsive">
+            <table class="table table-striped table-hover table-bordered align-middle text-center">
+                <thead class="table-light">
                     <tr>
-                        <td>@r.NombreReactivo</td>
-                        <td>@r.Fabricante</td>
-                        <td>@r.Unidad</td>
-                        <td class="text-end">@r.CantidadDisponible.ToString("N2")</td>
-                        <td class="text-center">
-                            @if (r.Anulado == true)
-                            {
-                                <span class="badge bg-danger">Deshabilitado</span>
-                            }
-                            else
-                            {
-                                <span class="badge bg-success">Habilitado</span>
-                            }
-                        </td>
-                        <td class="text-center">
-                            <button class="btn btn-sm btn-primary me-1" @onclick="() => MostrarModalEditar(r)">
-                                <i class="bi bi-pencil-square"></i>
-                            </button>
-                            <button class="btn btn-sm btn-danger" @onclick="() => AnularReactivoAsync(r.IdReactivo)">
-                                <i class="bi bi-x-circle"></i>
-                            </button>
-                        </td>
+                        <th>Nombre</th>
+                        <th>Fabricante</th>
+                        <th>Unidad</th>
+                        <th>Stock</th>
+                        <th>Estado</th>
+                        <th>Acciones</th>
                     </tr>
-                }
-            </tbody>
+                </thead>
+                <tbody>
+                    @foreach (var r in reactivosFiltrados)
+                    {
+                        <tr>
+                            <td class="text-start">@r.NombreReactivo</td>
+                            <td class="text-start">@r.Fabricante</td>
+                            <td>@r.Unidad</td>
+                            <td>@r.CantidadDisponible.ToString("N2")</td>
+                            <td>
+                                <span class="badge bg-@(r.Anulado.GetValueOrDefault() ? "danger" : "success")">
+                                    @(r.Anulado.GetValueOrDefault() ? "Inactivo" : "Activo")
+                                </span>
+                                
+                            </td>
+                            <td class="text-center">
+                                <div class="d-flex justify-content-center gap-2">
+                                    <button class="btn btn-warning btn-sm shadow-sm" title="Editar" @onclick="() => MostrarModalEditar(r)">
+                                        <i class="bi bi-pencil-square text-dark"></i>
+                                    </button>
+                                    <button class="btn btn-danger btn-sm shadow-sm" title="Anular" @onclick="() => AnularReactivoAsync(r.IdReactivo)">
+                                        <span class="fw-bold text-white">X</span>
+                                    </button>
+                                </div>
+                            </td>
 
-        </table>
-    </div>
-}
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+    else
+    {
+        <div class="alert alert-warning text-center">
+            <i class="bi bi-exclamation-circle me-2"></i>No se encontraron reactivos.
+        </div>
+    }
 
 @if (mostrarModalNuevo)
 {
-    <div class="modal fade show d-block" style="background-color: rgba(0,0,0,0.5);">
+    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
@@ -108,28 +117,28 @@ else
                     <button type="button" class="btn-close" @onclick="CerrarModalNuevo"></button>
                 </div>
                 <div class="modal-body">
-                    <div class="mb-2">
-                        <label>Nombre del Reactivo</label>
+                    <div class="mb-3">
+                        <label>Nombre</label>
                         <InputText class="form-control text-uppercase" @bind-Value="nuevoReactivo.NombreReactivo" />
                         @if (mostrarErrores && string.IsNullOrWhiteSpace(nuevoReactivo.NombreReactivo))
                         {
-                            <div class="text-danger small">Este campo es obligatorio.</div>
+                            <div class="text-danger small">Campo obligatorio</div>
                         }
                     </div>
-                    <div class="mb-2">
+                    <div class="mb-3">
                         <label>Fabricante</label>
                         <InputText class="form-control text-uppercase" @bind-Value="nuevoReactivo.Fabricante" />
                         @if (mostrarErrores && string.IsNullOrWhiteSpace(nuevoReactivo.Fabricante))
                         {
-                            <div class="text-danger small">Este campo es obligatorio.</div>
+                            <div class="text-danger small">Campo obligatorio</div>
                         }
                     </div>
-                    <div class="mb-2">
+                    <div class="mb-3">
                         <label>Unidad</label>
                         <InputText class="form-control" @bind-Value="nuevoReactivo.Unidad" />
                         @if (mostrarErrores && string.IsNullOrWhiteSpace(nuevoReactivo.Unidad))
                         {
-                            <div class="text-danger small">Este campo es obligatorio.</div>
+                            <div class="text-danger small">Campo obligatorio</div>
                         }
                     </div>
                 </div>
@@ -142,9 +151,10 @@ else
     </div>
 }
 
+<!-- Modal Movimientos -->
 @if (mostrarModalMovimientos)
 {
-    <div class="modal fade show d-block" style="background-color: rgba(0,0,0,0.5);">
+    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
         <div class="modal-dialog modal-xl">
             <div class="modal-content">
                 <div class="modal-header">
@@ -152,7 +162,7 @@ else
                     <button class="btn-close" @onclick="CerrarModalMovimientos"></button>
                 </div>
                 <div class="modal-body">
-                    <div class="row g-2 mb-3">
+                    <div class="row g-3 mb-3">
                         <div class="col-md-3">
                             <label>Desde</label>
                             <InputDate class="form-control" @bind-Value="filtroDesde" />
@@ -162,7 +172,7 @@ else
                             <InputDate class="form-control" @bind-Value="filtroHasta" />
                         </div>
                         <div class="col-md-3">
-                            <label>Tipo Movimiento</label>
+                            <label>Tipo</label>
                             <InputSelect class="form-select" @bind-Value="filtroTipo">
                                 <option value="">Todos</option>
                                 <option value="INGRESO">INGRESO</option>
@@ -170,19 +180,20 @@ else
                             </InputSelect>
                         </div>
                         <div class="col-md-3 d-flex align-items-end">
-                            <button class="btn btn-primary w-100" @onclick="BuscarMovimientos">
-                                <i class="fas fa-search me-1"></i> Filtrar
+                            <button class="btn btn-outline-primary w-100" @onclick="BuscarMovimientos">
+                                <i class="bi bi-funnel"></i> Filtrar
                             </button>
                         </div>
                     </div>
 
                     <div class="table-responsive">
-                        <table class="table table-bordered table-hover table-sm">
-                            <thead class="table-light text-center">
+                        <table class="table table-hover table-bordered align-middle text-center">
+
+                            <thead class="table-light">
                                 <tr>
                                     <th>Reactivo</th>
                                     <th>Tipo</th>
-                                    <th class="text-end">Cantidad</th>
+                                    <th>Cantidad</th>
                                     <th>Fecha</th>
                                     <th>N° Orden</th>
                                     <th>Observación</th>
@@ -194,7 +205,7 @@ else
                                     <tr>
                                         <td>@m.Reactivo</td>
                                         <td>@m.TipoMovimiento</td>
-                                        <td class="text-end">@m.Cantidad.ToString("N2")</td>
+                                        <td>@m.Cantidad.ToString("N2")</td>
                                         <td>@m.FechaMovimiento.ToString("yyyy-MM-dd")</td>
                                         <td>@m.NumeroOrden</td>
                                         <td>@m.Observacion</td>
@@ -206,12 +217,12 @@ else
 
                     @if (!movimientosGlobales.Any())
                     {
-                        <div class="alert alert-warning mt-2">No hay movimientos registrados.</div>
+                        <div class="alert alert-warning mt-3">No hay movimientos para mostrar.</div>
                     }
                 </div>
                 <div class="modal-footer">
                     <button class="btn btn-secondary" @onclick="CerrarModalMovimientos">
-                        <i class="fas fa-times me-1"></i> Cerrar
+                        <i class="bi bi-x-lg"></i> Cerrar
                     </button>
                 </div>
             </div>

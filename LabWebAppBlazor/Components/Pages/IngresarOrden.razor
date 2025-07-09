@@ -1,5 +1,7 @@
 ﻿@page "/ordenes/nuevo"
 @rendermode InteractiveServer
+<PageTitle>Registrar Nueva Orden</PageTitle>
+
 @using LabWebAppBlazor.Models
 @using LabWebAppBlazor.Services
 @using Microsoft.AspNetCore.Components.Authorization
@@ -20,7 +22,17 @@
 
 @if (!yaRenderizado)
 {
-    <p>Cargando interfaz...</p>
+    <div class="d-flex align-items-center text-primary">
+        <div class="spinner-border me-2" role="status"></div>
+        <strong>Cargando...</strong>
+    </div>
+}
+else if (!showContent)
+{
+    <div class="alert alert-danger mt-4 text-center">
+        <i class="fas fa-exclamation-triangle me-2"></i>
+        No está autorizado para registrar nuevas órdenes.
+    </div>
 }
 else
 {
@@ -35,7 +47,7 @@ else
                     <label class="form-label">Cédula del Paciente</label>
                     <div class="input-group">
                         <InputText class="form-control" @bind-Value="Cedula" @onkeydown="BuscarConEnter" />
-                        <button class="btn btn-outline-info" @onclick="BuscarPorCedula">
+                        <button class="btn btn-info" @onclick="BuscarPorCedula">
                             <i class="fas fa-search"></i>
                         </button>
                     </div>
@@ -83,7 +95,7 @@ else
                         <option value="@medico.IdMedico">@medico.NombreMedico</option>
                     }
                 </select>
-                <button class="btn btn-outline-secondary" type="button" @onclick="AbrirModalNuevoMedico">
+                <button class="btn btn-secondary" type="button" @onclick="AbrirModalNuevoMedico">
                     <i class="fas fa-user-md"></i> Nuevo
                 </button>
             </div>
@@ -92,7 +104,7 @@ else
 
 
     <div class="mb-3">
-        <button class="btn btn-outline-success" @onclick="() => MostrarModalExamen = true">
+        <button class="btn btn-success" @onclick="() => MostrarModalExamen = true">
             <i class="fas fa-vial me-1"></i> Agregar Examen
         </button>
     </div>
@@ -119,7 +131,7 @@ else
                                 <td>@ex.Estudio</td>
                                 <td>@ex.Precio?.ToString("C")</td>
                                 <td>
-                                    <button class="btn btn-sm btn-outline-danger" title="Quitar" @onclick="() => QuitarExamen(ex)">
+                                    <button class="btn btn-sm btn-danger" title="Quitar" @onclick="() => QuitarExamen(ex)">
                                         <i class="fas fa-trash-alt"></i>
                                     </button>
                                 </td>
@@ -201,7 +213,7 @@ else
                             <InputText class="form-control" @bind-Value="TextoBuscarExamen" placeholder="Buscar por nombre o estudio" />
                         </div>
                         <div class="col-md-3">
-                            <button class="btn btn-outline-primary w-100" @onclick="BuscarExamenes">
+                            <button class="btn btn-primary w-100" @onclick="BuscarExamenes">
                                 <i class="fas fa-search me-1"></i> Buscar
                             </button>
                         </div>
@@ -309,7 +321,7 @@ else
                             <InputText class="form-control" @bind-Value="filtroNombre" />
                         </div>
                     </div>
-                    <button class="btn btn-outline-primary mb-2" @onclick="BuscarPacientesModal">
+                    <button class="btn btn-primary mb-2" @onclick="BuscarPacientesModal">
                         <i class="fas fa-search me-1"></i> Buscar
                     </button>
 
@@ -427,6 +439,10 @@ else
     // Usuario
     private ClaimsPrincipal? usuario;
 
+    private bool showContent = false;
+    private bool esRecepOAdmin => usuario?.IsInRole("recepcionista") == true || usuario?.IsInRole("administrador") == true;
+
+
 
     private bool disposed = false;
 
@@ -445,19 +461,29 @@ else
         {
             yaRenderizado = true;
 
+            var auth = await AuthProvider.GetAuthenticationStateAsync();
+            usuario = auth.User;
+
+            if (!usuario.Identity?.IsAuthenticated ?? true)
+            {
+                // Redirección segura usando returnUrl en minúsculas y path relativo
+                var returnUrl = new Uri(Navigation.Uri).PathAndQuery;
+                Navigation.NavigateTo($"/login?returnUrl={Uri.EscapeDataString(returnUrl)}", true);
+                return;
+            }
+
+            showContent = esRecepOAdmin;
+
             if (!medicosCargados)
             {
                 Medicos = (await ApiService.GetMedicosAsync()).ToList();
-                var auth = await AuthProvider.GetAuthenticationStateAsync();
-                usuario = auth.User;
-
                 medicosCargados = true;
             }
-
 
             await InvokeAsync(StateHasChanged);
         }
     }
+
 
 
 

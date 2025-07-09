@@ -1,5 +1,7 @@
 ﻿@page "/medicos"
 @rendermode InteractiveServer
+<PageTitle>Gestión de Médicos</PageTitle>
+
 @using LabWebAppBlazor.Models
 @using LabWebAppBlazor.Services
 @using Microsoft.AspNetCore.Components.Authorization
@@ -18,35 +20,41 @@
 {
     <div class="d-flex align-items-center text-primary">
         <div class="spinner-border me-2" role="status"></div>
-        <strong>Cargando interfaz...</strong>
+        <strong>Cargando...</strong>
     </div>
 }
 else
 {
-    <div class="row mb-3">
-        <div class="col-md-3">
-            <label class="form-label">Buscar por</label>
-            <InputSelect class="form-select" @bind-Value="criterioBusqueda">
-                <option value="">-- Seleccione --</option>
-                <option value="nombre">Nombre</option>
-                <option value="especialidad">Especialidad</option>
-                <option value="telefono">Teléfono</option>
-                <option value="correo">Correo</option>
-            </InputSelect>
-        </div>
-        <div class="col-md-5">
-            <label class="form-label">Valor</label>
-            <InputText class="form-control" @bind-Value="valorBusqueda" />
-        </div>
-        <div class="col-md-4 d-flex align-items-end gap-2">
-            <button class="btn btn-primary" @onclick="BuscarMedicos" title="Buscar médico">
-                <i class="fas fa-search me-1"></i>Buscar
-            </button>
-            <button class="btn btn-success" @onclick="MostrarModal" title="Agregar nuevo médico">
-                <i class="fas fa-plus-circle me-1"></i>Agregar Médico
-            </button>
+    <div class="card mb-3 shadow-sm">
+        <div class="card-body row g-3">
+            <div class="col-md-3">
+                <label class="form-label">Buscar por</label>
+                <InputSelect class="form-select" @bind-Value="criterioBusqueda">
+                    <option value="">-- Seleccione --</option>
+                    <option value="nombre">Nombre</option>
+                    <option value="especialidad">Especialidad</option>
+                    <option value="telefono">Teléfono</option>
+                    <option value="correo">Correo</option>
+                </InputSelect>
+            </div>
+            <div class="col-md-5">
+                <label class="form-label">Valor</label>
+                <InputText class="form-control" @bind-Value="valorBusqueda" />
+            </div>
+            <div class="col-md-4 d-flex align-items-end gap-2 flex-wrap justify-content-md-end">
+                <button class="btn btn-primary" @onclick="BuscarMedicos" title="Buscar médico">
+                    <i class="fas fa-search me-1"></i>
+                </button>
+                @if (EsAdmin || EsRecepcionista)
+                {
+                    <button class="btn btn-success" @onclick="MostrarModal" title="Agregar nuevo médico">
+                        <i class="fas fa-plus-circle me-1"></i>
+                    </button>
+                }
+            </div>
         </div>
     </div>
+
 
     @if (ListaMedicos is null || !ListaMedicos.Any())
     {
@@ -56,6 +64,34 @@ else
     }
     else
     {
+        <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
+            <span>
+                Mostrando @((ListaMedicos.Count == 0) ? 0 : ((CurrentPage - 1) * PageSize + 1))
+                - @((CurrentPage - 1) * PageSize + PaginatedMedicos.Count()) de @ListaMedicos.Count médicos
+            </span>
+
+            <div class="d-flex align-items-center gap-2">
+                <select class="form-select form-select-sm" style="width: auto;" @bind="PageSize">
+                    <option value="5">5</option>
+                    <option value="10">10</option>
+                    <option value="20">20</option>
+                    <option value="50">50</option>
+                    <option value="75">75</option>
+                </select>
+                <nav>
+                    <ul class="pagination pagination-sm mb-0">
+                        <li class="page-item @(CurrentPage == 1 ? "disabled" : "")">
+                            <button class="page-link" @onclick="() => CambiarPagina(-1)">«</button>
+                        </li>
+                        <li class="page-item @(CurrentPage == TotalPages ? "disabled" : "")">
+                            <button class="page-link" @onclick="() => CambiarPagina(1)">»</button>
+                        </li>
+                    </ul>
+                </nav>
+            </div>
+        </div>
+
+
         <div class="table-responsive">
             <table class="table table-bordered table-hover align-middle">
                 <thead class="table-light text-center">
@@ -69,7 +105,7 @@ else
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach (var medico in ListaMedicos)
+                    @foreach (var medico in PaginatedMedicos)
                     {
                         <tr class="@(medico.Anulado ? "table-danger" : "")">
                             <td>@medico.NombreMedico</td>
@@ -84,20 +120,30 @@ else
                             <td class="text-center">
                                 @if (!medico.Anulado)
                                 {
-                                    <button class="btn btn-warning btn-sm me-2 shadow-sm" title="Editar" @onclick="() => EditarMedico(medico)">
-                                        <i class="bi bi-pencil-square text-dark"></i>
-                                    </button>
-                                    <button class="btn btn-danger btn-sm shadow-sm" title="Anular" @onclick="() => ConfirmarAnulacion(medico.IdMedico)">
-                                        <span class="fw-bold text-white">X</span>
-                                    </button>
+                                    @if (EsAdmin || EsRecepcionista)
+                                    {
+                                        <button class="btn btn-warning btn-sm me-2 shadow-sm" title="Editar" @onclick="() => EditarMedico(medico)">
+                                            <i class="bi bi-pencil-square text-dark"></i>
+                                        </button>
+                                    }
+                                    @if (EsAdmin)
+                                    {
+                                        <button class="btn btn-danger btn-sm shadow-sm" title="Anular" @onclick="() => ConfirmarAnulacion(medico.IdMedico)">
+                                            <i class="bi bi-x-circle-fill"></i>
+                                        </button>
+                                    }
                                 }
                                 else
                                 {
-                                    <button class="btn btn-success btn-sm shadow-sm" title="Activar" @onclick="() => ConfirmarReactivacion(medico.IdMedico)">
-                                        <i class="bi bi-check-circle-fill"></i>
-                                    </button>
+                                    @if (EsAdmin)
+                                    {
+                                        <button class="btn btn-success btn-sm shadow-sm" title="Activar" @onclick="() => ConfirmarReactivacion(medico.IdMedico)">
+                                            <i class="bi bi-check-circle-fill"></i>
+                                        </button>
+                                    }
                                 }
                             </td>
+
 
                         </tr>
                     }
@@ -160,15 +206,41 @@ else
     private string criterioBusqueda = "";
     private string valorBusqueda = "";
 
+    private ClaimsPrincipal? user;
+    private bool EsAdmin => user?.IsInRole("administrador") ?? false;
+    private bool EsRecepcionista => user?.IsInRole("recepcionista") ?? false;
+    private bool EsLaboratorista => user?.IsInRole("laboratorista") ?? false;
+    private bool PuedeGestionar => EsAdmin || EsRecepcionista;
+
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender)
         {
+            var authState = await AuthProvider.GetAuthenticationStateAsync();
+            user = authState.User;
+
+            if (!user.Identity?.IsAuthenticated ?? true)
+            {
+                // Redirección a login y regreso post-login
+                var returnUrl = new Uri(Navigation.Uri).PathAndQuery;
+                Navigation.NavigateTo($"/login?returnUrl={Uri.EscapeDataString(returnUrl)}", true);
+                return;
+            }
+
+            // Solo admin, recepcionista o laboratorista pueden acceder
+            if (!(EsAdmin || EsRecepcionista || EsLaboratorista))
+            {
+                isRendered = false;
+                StateHasChanged();
+                return;
+            }
+
             isRendered = true;
             ListaMedicos = (await ApiService.GetMedicosAsync()).ToList();
             StateHasChanged();
         }
     }
+
 
     private async Task BuscarMedicos()
     {
@@ -265,4 +337,30 @@ else
             }
         }
     }
+
+    private int _pageSize = 25;
+    private int PageSize
+    {
+        get => _pageSize;
+        set
+        {
+            if (_pageSize != value)
+            {
+                _pageSize = value;
+                CurrentPage = 1;
+            }
+        }
+    }
+
+    private int CurrentPage = 1;
+    private int TotalPages => (int)Math.Ceiling(ListaMedicos.Count / (double)PageSize);
+    private IEnumerable<MedicoDto> PaginatedMedicos => ListaMedicos
+        .Skip((CurrentPage - 1) * PageSize)
+        .Take(PageSize);
+
+    private void CambiarPagina(int cambio)
+    {
+        CurrentPage = Math.Max(1, Math.Min(TotalPages, CurrentPage + cambio));
+    }
+
 }

@@ -1,5 +1,7 @@
 ﻿@page "/pacientes"
 @rendermode InteractiveServer
+<PageTitle>Gestión de Pacientes</PageTitle>
+
 @using Microsoft.AspNetCore.Components.Authorization
 @using LabWebAppBlazor.Models
 @using System.Security.Claims
@@ -17,40 +19,49 @@
 
     @if (!isRendered)
     {
-        <div class="alert alert-info">Cargando interfaz...</div>
-    }
+    <div class="d-flex align-items-center text-primary">
+        <div class="spinner-border me-2" role="status"></div>
+        <strong>Cargando...</strong>
+    </div>
+}
     else if (!showContent)
     {
         <div class="alert alert-danger">No autorizado.</div>
     }
     else
     {
-        <div class="row mb-4 g-3 align-items-end">
-            <div class="col-md-3">
-                <label class="form-label">Buscar por</label>
-                <InputSelect class="form-select" @bind-Value="criterioBusqueda">
-                    <option value="">-- Seleccione --</option>
-                    <option value="cedula">Cédula</option>
-                    <option value="nombre">Nombre</option>
-                    <option value="edad">Edad</option>
-                    <option value="direccion">Dirección</option>
-                    <option value="correo">Correo</option>
-                    <option value="telefono">Teléfono</option>
-                </InputSelect>
-            </div>
-            <div class="col-md-5">
-                <label class="form-label">Valor</label>
-                <InputText class="form-control" @bind-Value="valorBusqueda" />
-            </div>
-            <div class="col-md-4 d-grid gap-2 d-md-flex justify-content-md-end">
-                <button class="btn btn-primary" @onclick="BuscarPacientes">
-                    <i class="bi bi-search"></i> Buscar
-                </button>
-                <button class="btn btn-success" @onclick="MostrarModal">
-                    <i class="bi bi-person-plus-fill"></i> Agregar Paciente
-                </button>
+        <div class="card mb-3 shadow-sm">
+            <div class="card-body row g-3">
+                <div class="col-md-3">
+                    <label class="form-label">Buscar por</label>
+                    <InputSelect class="form-select" @bind-Value="criterioBusqueda">
+                        <option value="">-- Seleccione --</option>
+                        <option value="cedula">Cédula</option>
+                        <option value="nombre">Nombre</option>
+                        <option value="edad">Edad</option>
+                        <option value="direccion">Dirección</option>
+                        <option value="correo">Correo</option>
+                        <option value="telefono">Teléfono</option>
+                    </InputSelect>
+                </div>
+                <div class="col-md-5">
+                    <label class="form-label">Valor</label>
+                    <InputText class="form-control" @bind-Value="valorBusqueda" />
+                </div>
+                <div class="col-md-4 d-flex align-items-end gap-2 flex-wrap justify-content-md-end">
+                    <button class="btn btn-primary" @onclick="BuscarPacientes">
+                        <i class="bi bi-search"></i>
+                    </button>
+                    @if (EsAdmin || EsRecepcionista)
+                    {
+                        <button class="btn btn-success" @onclick="MostrarModal">
+                            <i class="bi bi-person-plus-fill"></i>
+                        </button>
+                    }
+                </div>
             </div>
         </div>
+
 
         @if (ListaPacientes is null || ListaPacientes.Count == 0)
         {
@@ -58,7 +69,34 @@
         }
         else
         {
-            <div class="table-responsive">
+        <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
+            <span>
+                Mostrando @((ListaPacientes.Count == 0) ? 0 : ((CurrentPage - 1) * PageSize + 1))
+                - @((CurrentPage - 1) * PageSize + PaginatedPacientes.Count()) de @ListaPacientes.Count pacientes
+            </span>
+
+            <div class="d-flex align-items-center gap-2">
+                <select class="form-select form-select-sm" style="width: auto;" @bind="PageSize">
+                    <option value="5">5</option>
+                    <option value="10">10</option>
+                    <option value="20">20</option>
+                    <option value="50">50</option>
+                    <option value="75">75</option>
+                </select>
+                <nav>
+                    <ul class="pagination pagination-sm mb-0">
+                        <li class="page-item">
+                            <button class="page-link" @onclick="() => CambiarPagina(-1)">«</button>
+                        </li>
+                        <li class="page-item">
+                            <button class="page-link" @onclick="() => CambiarPagina(1)">»</button>
+                        </li>
+                    </ul>
+                </nav>
+            </div>
+        </div>
+
+        <div class="table-responsive shadow-sm" style="max-height: 500px; min-height: 300px; overflow-y: auto;">
                 <table class="table table-hover table-bordered align-middle">
                     <thead class="table-light">
                         <tr>
@@ -73,7 +111,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach (var paciente in ListaPacientes)
+                    @foreach (var paciente in PaginatedPacientes)
                         {
                             <tr>
                                 <td>@paciente.CedulaPaciente</td>
@@ -88,31 +126,29 @@
                                     </span>
                                 </td>
                                 <td class="text-center">
-                                    @if (!(paciente.Anulado ?? false))
+                                @if (EsAdmin || EsRecepcionista)
+                                {
+                                    <button class="btn btn-warning btn-sm me-1 shadow-sm" title="Editar" @onclick="() => EditarPaciente(paciente)">
+                                        <i class="bi bi-pencil-square text-black"></i>
+                                    </button>
+                                }
+
+                                @if (EsAdmin)
+                                {
+                                    @if (paciente.Anulado == true)
                                     {
-                                        <button class="btn btn-warning btn-sm me-1 shadow-sm" title="Editar" @onclick="() => EditarPaciente(paciente)">
-                                            <i class="bi bi-pencil-square text-black"></i>
+                                        <button class="btn btn-success btn-sm shadow-sm" title="Habilitar" @onclick="() => ConfirmarReactivacion(paciente)">
+                                            <i class="bi bi-check-circle-fill"></i>
                                         </button>
-                                        @if (EsAdmin)
-                                        {
-                                            <button class="btn btn-danger btn-sm shadow-sm" title="Anular" @onclick="() => ConfirmarAnulacion(paciente.IdPaciente)">
-                                                <span class="text-white fw-bold">X</span>
-                                            </button>
-                                        }
                                     }
                                     else
                                     {
-                                        @if (EsAdmin)
-                                        {
-                                            <button class="btn btn-success btn-sm shadow-sm" title="Activar" @onclick="() => ConfirmarReactivacion(paciente)">
-                                                <i class="bi bi-check-circle-fill"></i>
-                                            </button>
-                                        }
-                                        else
-                                        {
-                                            <span class="text-muted">Sin acciones</span>
-                                        }
+                                        <button class="btn btn-danger btn-sm shadow-sm" title="Deshabilitar" @onclick="() => ConfirmarAnulacion(paciente.IdPaciente)">
+                                            <i class="bi bi-x-circle-fill"></i>
+                                        </button>
                                     }
+                                }
+
                                 </td>
 
                             </tr>
@@ -202,7 +238,7 @@
 
     private bool EsAdmin => user?.IsInRole("administrador") ?? false;
     private bool EsRecepcionista => user?.IsInRole("recepcionista") ?? false;
-
+    private bool EsLaboratorista => user?.IsInRole("laboratorista") ?? false;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -215,15 +251,25 @@
 
             if (!user.Identity?.IsAuthenticated ?? true)
             {
-                var returnUrl = Navigation.ToBaseRelativePath(Navigation.Uri);
-                Navigation.NavigateTo($"/login?ReturnUrl={Uri.EscapeDataString(returnUrl)}", forceLoad: true);
+                var returnUrl = new Uri(Navigation.Uri).PathAndQuery;
+                Navigation.NavigateTo($"/login?returnUrl={Uri.EscapeDataString(returnUrl)}", forceLoad: true);
+                return;
+            }
+
+            // Bloquea el acceso a laboratorista
+            if (EsLaboratorista)
+            {
+                showContent = false;
+                StateHasChanged();
                 return;
             }
 
             showContent = true;
+            await BuscarPacientes();
             StateHasChanged();
         }
     }
+
 
     private async Task BuscarPacientes()
     {
@@ -461,5 +507,32 @@
             }
         }
     }
+
+    private int _pageSize = 25;
+    private int PageSize
+    {
+        get => _pageSize;
+        set
+        {
+            if (_pageSize != value)
+            {
+                _pageSize = value;
+                CurrentPage = 1;
+            }
+        }
+    }
+
+    private int CurrentPage = 1;
+    private int TotalPages => (int)Math.Ceiling(ListaPacientes.Count / (double)PageSize);
+    private IEnumerable<PacienteDto> PaginatedPacientes => ListaPacientes
+        .Skip((CurrentPage - 1) * PageSize)
+        .Take(PageSize);
+
+
+    private void CambiarPagina(int cambio)
+    {
+        CurrentPage = Math.Max(1, Math.Min(TotalPages, CurrentPage + cambio));
+    }
+
 
 }

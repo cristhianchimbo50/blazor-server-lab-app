@@ -1,5 +1,7 @@
 ﻿@page "/resultados"
 @rendermode InteractiveServer
+<PageTitle>Visualización de Resultados</PageTitle>
+
 @using LabWebAppBlazor.Models
 @using LabWebAppBlazor.Services
 @using Microsoft.AspNetCore.Components.Authorization
@@ -18,7 +20,7 @@
 {
     <div class="d-flex align-items-center text-primary">
         <div class="spinner-border me-2" role="status"></div>
-        <strong>Cargando interfaz...</strong>
+        <strong>Cargando...</strong>
     </div>
 }
 else if (!showContent)
@@ -29,29 +31,29 @@ else if (!showContent)
 }
 else
 {
-    <div class="row mb-3">
-        <div class="col-md-3">
-            <label class="form-label">Buscar por</label>
-            <InputSelect class="form-select" @bind-Value="criterioBusqueda">
-                <option value="">-- Seleccione --</option>
-                <option value="numero">Número de Resultado</option>
-                <option value="cedula">Cédula</option>
-                <option value="nombre">Nombre</option>
-                <option value="fecha">Fecha Resultado</option>
-                <option value="anulado">Estado</option>
-            </InputSelect>
-        </div>
-        <div class="col-md-5">
-            <label class="form-label">Valor</label>
-            <InputText class="form-control" @bind-Value="valorBusqueda" />
-        </div>
-        <div class="col-md-4 d-flex align-items-end gap-2">
-            <button class="btn btn-primary" @onclick="BuscarResultados" title="Buscar resultados">
-                <i class="fas fa-search me-1"></i>Buscar
-            </button>
-            <button class="btn btn-outline-secondary" @onclick="LimpiarFiltro" title="Limpiar filtros">
-                <i class="fas fa-eraser me-1"></i>Limpiar
-            </button>
+    <div class="card mb-3 shadow-sm">
+        <div class="card-body row g-3">
+            <div class="col-md-3">
+                <label class="form-label">Buscar por</label>
+                <InputSelect class="form-select" @bind-Value="criterioBusqueda">
+                    <option value="">-- Seleccione --</option>
+                    <option value="numero">Número de Resultado</option>
+                    <option value="cedula">Cédula</option>
+                    <option value="nombre">Nombre</option>
+                    <option value="fecha">Fecha Resultado</option>
+                    <option value="anulado">Estado</option>
+                </InputSelect>
+            </div>
+            <div class="col-md-5">
+                <label class="form-label">Valor</label>
+                <InputText class="form-control" @bind-Value="valorBusqueda" />
+            </div>
+            <div class="col-md-4 d-flex align-items-end gap-2 flex-wrap justify-content-md-end">
+                <button class="btn btn-primary" @onclick="BuscarResultados" title="Buscar resultados">
+                    <i class="fas fa-search me-1"></i>
+                </button>
+
+            </div>
         </div>
     </div>
 
@@ -63,7 +65,35 @@ else
     }
     else
     {
-        <div class="table-responsive">
+        <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
+            <span>
+                Mostrando @((listaResultados.Count == 0) ? 0 : ((CurrentPage - 1) * PageSize + 1))
+                - @((CurrentPage - 1) * PageSize + PaginatedResultados.Count()) de @listaResultados.Count resultados
+            </span>
+
+            <div class="d-flex align-items-center gap-2">
+                <select class="form-select form-select-sm" style="width: auto;" @bind="PageSize">
+                    <option value="5">5</option>
+                    <option value="10">10</option>
+                    <option value="20">20</option>
+                    <option value="50">50</option>
+                    <option value="75">75</option>
+                </select>
+                <nav>
+                    <ul class="pagination pagination-sm mb-0">
+                        <li class="page-item @(CurrentPage == 1 ? "disabled" : "")">
+                            <button class="page-link" @onclick="() => CambiarPagina(-1)">«</button>
+                        </li>
+                        <li class="page-item @(CurrentPage == TotalPages ? "disabled" : "")">
+                            <button class="page-link" @onclick="() => CambiarPagina(1)">»</button>
+                        </li>
+                    </ul>
+                </nav>
+            </div>
+        </div>
+
+
+        <div class="table-responsive shadow-sm" style="max-height: 500px; min-height: 300px; overflow-y: auto;">
             <table class="table table-hover table-bordered align-middle">
                 <thead class="table-light text-center">
                     <tr>
@@ -76,7 +106,7 @@ else
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach (var r in listaResultados)
+                    @foreach (var r in PaginatedResultados)
                     {
                         <tr class="@((r.Anulado ? "table-danger" : ""))">
                             <td>@r.NumeroResultado</td>
@@ -164,18 +194,46 @@ else
                     </table>
                 </div>
 
-                @if (!DetalleActual.Anulado)
-                {
-                    <div class="modal-footer">
-                        <button class="btn btn-danger" @onclick="AnularResultado">
-                            <i class="fas fa-ban me-1"></i>Anular Resultado
-                        </button>
-                    </div>
-                }
+                <div class="modal-footer d-flex justify-content-between flex-wrap">
+                    @if (!DetalleActual.Anulado)
+                    {
+                        <div class="d-flex">
+                            <button class="btn btn-primary" @onclick="VisualizarResultadoPdf">
+                                <i class="fas fa-file-pdf me-1"></i> Imprimir Resultado
+                            </button>
+                        </div>
+                    }
+
+                    @if (!DetalleActual.Anulado && (EsAdmin || EsLaboratorista))
+                    {
+                        <div class="d-flex">
+                            <button class="btn btn-danger" @onclick="AnularResultado">
+                                <i class="fas fa-ban me-1"></i> Anular Resultado
+                            </button>
+                        </div>
+                    }
+                </div>
+
+
             </div>
         </div>
     </div>
 }
+
+
+<div class="modal fade" id="pdfModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">Resultado PDF</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body">
+                <iframe id="iframePdf" width="100%" height="600px"></iframe>
+            </div>
+        </div>
+    </div>
+</div>
 
 @code {
     private bool isRendered = false;
@@ -189,6 +247,11 @@ else
     private ResultadoDetalleDto? DetalleActual;
     private bool MostrarModalDetalle = false;
 
+    private bool EsAdmin => user?.IsInRole("administrador") ?? false;
+    private bool EsLaboratorista => user?.IsInRole("laboratorista") ?? false;
+    private bool EsRecepcionista => user?.IsInRole("recepcionista") ?? false;
+
+
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender)
@@ -199,7 +262,17 @@ else
 
             if (!user.Identity?.IsAuthenticated ?? true)
             {
-                Navigation.NavigateTo("/login", true);
+                // Redirección con returnUrl (minúsculas)
+                var returnUrl = new Uri(Navigation.Uri).PathAndQuery;
+                Navigation.NavigateTo($"/login?returnUrl={Uri.EscapeDataString(returnUrl)}", true);
+                return;
+            }
+
+            // Solo permiten acceso a admin, laboratorista, recepcionista
+            if (!(EsAdmin || EsLaboratorista || EsRecepcionista))
+            {
+                showContent = false;
+                StateHasChanged();
                 return;
             }
 
@@ -209,6 +282,7 @@ else
         }
     }
 
+
     private async Task CargarResultados()
     {
         listaResultados = (await ApiService.GetResultadosAsync()).ToList();
@@ -216,6 +290,7 @@ else
 
     private async Task BuscarResultados()
     {
+        CurrentPage = 1;
         await CargarResultados();
 
         if (!string.IsNullOrWhiteSpace(criterioBusqueda) && !string.IsNullOrWhiteSpace(valorBusqueda))
@@ -256,6 +331,7 @@ else
     private async Task AnularResultado()
     {
         if (DetalleActual is null) return;
+        if (!(EsAdmin || EsLaboratorista)) return;
 
         bool confirmar = await JS.InvokeAsync<bool>("SwalConfirm", "¿Está seguro que desea anular este resultado?");
         if (!confirmar) return;
@@ -274,4 +350,53 @@ else
             await JS.InvokeVoidAsync("alert", "Error al anular el resultado.");
         }
     }
+
+    private async Task VisualizarResultadoPdf()
+    {
+        if (DetalleActual is null)
+            return;
+
+        var idResultado = DetalleActual.IdResultado;
+
+        var pdfBytes = await ApiService.ObtenerResultadosPdfAsync(new List<int> { idResultado });
+        if (pdfBytes.Length == 0)
+        {
+            await JS.InvokeVoidAsync("alert", "Error al generar el PDF.");
+            return;
+        }
+
+        var base64Pdf = Convert.ToBase64String(pdfBytes);
+        var pdfUrl = $"data:application/pdf;base64,{base64Pdf}";
+
+        await JS.InvokeVoidAsync("mostrarModalPdfDesdeBytes", pdfUrl);
+    }
+
+    private int _pageSize = 25;
+    private int PageSize
+    {
+        get => _pageSize;
+        set
+        {
+            if (_pageSize != value)
+            {
+                _pageSize = value;
+                CurrentPage = 1;
+                StateHasChanged();
+            }
+        }
+    }
+
+    private int CurrentPage = 1;
+    private int TotalPages => (int)Math.Ceiling(listaResultados.Count / (double)PageSize);
+    private IEnumerable<ResultadoDto> PaginatedResultados => listaResultados
+        .Skip((CurrentPage - 1) * PageSize)
+        .Take(PageSize);
+
+    private void CambiarPagina(int cambio)
+    {
+        CurrentPage = Math.Max(1, Math.Min(TotalPages, CurrentPage + cambio));
+    }
+
+
+
 }

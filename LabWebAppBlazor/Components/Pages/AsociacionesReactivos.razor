@@ -1,5 +1,7 @@
 ﻿@page "/asociaciones-reactivos"
 @rendermode InteractiveServer
+<PageTitle>Asociaciones Exámenes - Reactivos</PageTitle>
+
 @using LabWebAppBlazor.DTOs
 @using LabWebAppBlazor.Models
 @using LabWebAppBlazor.Services
@@ -11,30 +13,60 @@
 @inject NavigationManager Navigation
 @inject IJSRuntime JS
 
-<div class="container-fluid px-3">
-    <div class="d-flex align-items-center mb-4">
-        <i class="bi bi-link-45deg fs-3 text-primary me-2"></i>
-        <h4 class="m-0">Asociaciones Exámenes - Reactivos</h4>
+<div class="d-flex align-items-center mb-4">
+    <i class="bi bi-link-45deg fs-3 text-primary me-2"></i>
+    <h3 class="m-0">Asociaciones Exámenes - Reactivos</h3>
+</div>
+
+@if (cargando)
+{
+    <div class="d-flex align-items-center text-primary">
+        <div class="spinner-border me-2" role="status"></div>
+        <strong>Cargando...</strong>
+    </div>
+}
+else if (accesoDenegado)
+{
+    <div class="alert alert-danger text-center">
+        <i class="bi bi-shield-lock-fill me-2"></i> No autorizado para ver esta página.
+    </div>
+}
+else
+{
+    <!-- Filtros -->
+    <div class="card mb-3 shadow-sm">
+        <div class="card-body row g-3">
+            <div class="col-md-4">
+                <label class="form-label">Buscar por</label>
+                <InputSelect class="form-select" @bind-Value="criterioBusqueda">
+                    <option value="">-- Seleccione --</option>
+                    <option value="examen">Examen</option>
+                    <option value="reactivo">Reactivo</option>
+                    <option value="unidad">Unidad</option>
+                </InputSelect>
+            </div>
+            <div class="col-md-5">
+                <label class="form-label">Valor</label>
+                <InputText class="form-control" @bind-Value="valorBusqueda" />
+            </div>
+
+            <div class="col-md-3 d-flex align-items-end justify-content-md-end gap-2">
+                <button class="btn btn-primary" @onclick="BuscarAsociaciones">
+                    <i class="bi bi-search me-2"></i> Buscar
+                </button>
+                <button class="btn btn-success" @onclick="IrAVinculoReactivos">
+                    <i class="bi bi-plus-circle me-2"></i> Vincular Reactivos
+                </button>
+            </div>
+        </div>
     </div>
 
-    @if (cargando)
-    {
-        <div class="text-center my-5">
-            <div class="spinner-border text-primary" role="status"></div>
-            <p class="mt-3">Cargando asociaciones...</p>
-        </div>
-    }
-    else if (asociaciones.Any())
-    {
-        <div class="d-flex justify-content-end mb-3">
-            <button class="btn btn-success" @onclick="IrAVinculoReactivos">
-                <i class="bi bi-plus-circle me-2"></i>Vincular Reactivos
-            </button>
-        </div>
 
+    <!-- Tabla -->
+    @if (asociacionesFiltradas.Any())
+    {
         <div class="table-responsive shadow-sm rounded">
             <table class="table table-hover table-bordered align-middle text-center">
-
                 <thead class="table-light">
                     <tr>
                         <th>Examen</th>
@@ -45,7 +77,7 @@
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach (var item in asociaciones)
+                    @foreach (var item in asociacionesFiltradas)
                     {
                         <tr>
                             <td>@item.NombreExamen</td>
@@ -57,7 +89,6 @@
                                     <i class="bi bi-pencil-square text-dark"></i>
                                 </button>
                             </td>
-
                         </tr>
                     }
                 </tbody>
@@ -70,24 +101,87 @@
             <i class="bi bi-info-circle-fill me-2"></i>
             No hay asociaciones registradas aún.
         </div>
-
-        <div class="d-flex justify-content-end mt-3">
-            <button class="btn btn-success" @onclick="IrAVinculoReactivos">
-                <i class="bi bi-plus-circle me-2"></i>Vincular Reactivos
-            </button>
-        </div>
     }
-</div>
+}
 
 @code {
-    private bool cargando = true;
     private List<AsociacionReactivoDto> asociaciones = new();
+    private List<AsociacionReactivoDto> asociacionesFiltradas = new();
+    private bool cargando = true;
+    private bool accesoDenegado = false;
+    private bool isRendered = false;
 
-    protected override async Task OnInitializedAsync()
+    private string criterioBusqueda = "";
+    private string valorBusqueda = "";
+
+    private ClaimsPrincipal? user;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        var datos = await ApiService.ObtenerTodasLasAsociacionesAsync();
-        asociaciones = datos.ToList();
-        cargando = false;
+        if (firstRender && !isRendered)
+        {
+            user = (await AuthProvider.GetAuthenticationStateAsync()).User;
+
+            if (!user.Identity?.IsAuthenticated ?? true)
+            {
+                var returnUrl = new Uri(Navigation.Uri).PathAndQuery;
+                Navigation.NavigateTo($"/login?returnUrl={Uri.EscapeDataString(returnUrl)}", forceLoad: true);
+                return;
+            }
+
+            if (!user.IsInRole("administrador"))
+            {
+                accesoDenegado = true;
+                cargando = false;
+                isRendered = true;
+                StateHasChanged();
+                return;
+            }
+
+            try
+            {
+                var datos = await ApiService.ObtenerTodasLasAsociacionesAsync();
+                asociaciones = datos.ToList();
+                asociacionesFiltradas = asociaciones.ToList();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error cargando asociaciones: {ex.Message}");
+                accesoDenegado = true;
+            }
+            finally
+            {
+                cargando = false;
+                isRendered = true;
+                StateHasChanged();
+            }
+        }
+    }
+
+    private void BuscarAsociaciones()
+    {
+        if (string.IsNullOrWhiteSpace(criterioBusqueda) || string.IsNullOrWhiteSpace(valorBusqueda))
+        {
+            asociacionesFiltradas = asociaciones.ToList();
+            return;
+        }
+
+        var valor = valorBusqueda.Trim().ToLower();
+
+        asociacionesFiltradas = criterioBusqueda switch
+        {
+            "examen" => asociaciones.Where(a => a.NombreExamen.ToLower().Contains(valor)).ToList(),
+            "reactivo" => asociaciones.Where(a => a.NombreReactivo.ToLower().Contains(valor)).ToList(),
+            "unidad" => asociaciones.Where(a => a.Unidad.ToLower().Contains(valor)).ToList(),
+            _ => asociaciones.ToList()
+        };
+    }
+
+    private void LimpiarFiltro()
+    {
+        criterioBusqueda = "";
+        valorBusqueda = "";
+        asociacionesFiltradas = asociaciones.ToList();
     }
 
     private void IrAEditar(int idExamen)

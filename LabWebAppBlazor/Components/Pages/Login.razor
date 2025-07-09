@@ -1,5 +1,8 @@
-﻿@page "/"
+﻿
 @page "/login"
+@rendermode InteractiveServer
+<PageTitle>Iniciar Sesión</PageTitle>
+
 @attribute [AllowAnonymous]
 @layout EmptyLayout
 
@@ -12,7 +15,7 @@
 @inject NavigationManager Navigation
 @inject AuthenticationStateProvider AuthProvider
 @inject IApiService ApiService
-@rendermode InteractiveServer
+
 
 <div class="container d-flex align-items-center justify-content-center vh-100">
     <div class="row w-100 shadow-lg rounded p-4 bg-white" style="max-width: 900px;">
@@ -49,7 +52,7 @@
                     <i class="bi bi-box-arrow-in-right me-1"></i>Ingresar
                 </button>
 
-                <button type="button" class="btn btn-outline-secondary w-100"
+                <button type="button" class="btn btn-secondary w-100"
                         @onclick="@(() => Navigation.NavigateTo("/recuperar-clave"))">
                     <i class="bi bi-question-circle me-1"></i>¿Olvidó su contraseña?
                 </button>
@@ -75,7 +78,7 @@
     {
         var uri = Navigation.ToAbsoluteUri(Navigation.Uri);
         var query = HttpUtility.ParseQueryString(uri.Query);
-        redirectUrl = query["ReturnUrl"];
+        redirectUrl = query["returnUrl"]; // Usar siempre minúsculas
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -133,7 +136,8 @@
                 }
                 else
                 {
-                    var destino = string.IsNullOrEmpty(redirectUrl) ? "/home" : redirectUrl!;
+                    // Redirigir a returnUrl si existe, o a /home
+                    var destino = string.IsNullOrWhiteSpace(redirectUrl) ? "/home" : redirectUrl!;
                     Navigation.NavigateTo(destino, forceLoad: true);
                 }
             }

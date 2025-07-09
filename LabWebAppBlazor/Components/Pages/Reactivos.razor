@@ -1,5 +1,7 @@
 ﻿@page "/reactivos"
 @rendermode InteractiveServer
+<PageTitle>Gestión de Reactivos</PageTitle>
+
 @using LabWebAppBlazor.Models
 @using LabWebAppBlazor.Services
 @using Microsoft.AspNetCore.Components.Authorization
@@ -10,46 +12,70 @@
 @inject NavigationManager Navigation
 @inject IJSRuntime JS
 
+@if (!isRendered)
+{
+    <div class="d-flex align-items-center text-primary">
+        <div class="spinner-border me-2" role="status"></div>
+        <strong>Cargando...</strong>
+    </div>
+}
+else if (!showContent)
+{
+    <div class="alert alert-danger">No autorizado.</div>
+}
+else
+{
     <div class="d-flex align-items-center mb-4">
         <i class="fas fa-vial text-primary fs-3 me-2"></i>
         <h3 class="mb-0">Gestión de Reactivos</h3>
     </div>
 
+
+
     <!-- Filtros -->
-    <div class="row g-3 align-items-end mb-4">
-        <div class="col-md-3">
-            <label class="form-label">Buscar por</label>
-            <InputSelect class="form-select" @bind-Value="criterioBusqueda">
-                <option value="">-- Seleccione --</option>
-                <option value="nombre">Nombre</option>
-                <option value="fabricante">Fabricante</option>
-                <option value="unidad">Unidad</option>
-            </InputSelect>
-        </div>
-        <div class="col-md-5">
-            <label class="form-label">Valor</label>
-            <InputText class="form-control" @bind-Value="valorBusqueda" />
-        </div>
-        <div class="col-md-4 d-flex flex-wrap gap-2">
-            <button class="btn btn-outline-primary" @onclick="BuscarReactivos" title="Buscar">
-                <i class="bi bi-search me-1"></i>Buscar
-            </button>
-            <button class="btn btn-outline-secondary" @onclick="LimpiarFiltro" title="Limpiar">
-                <i class="bi bi-eraser me-1"></i>Limpiar
-            </button>
-            <button class="btn btn-success" @onclick="MostrarModalNuevo" title="Nuevo">
-                <i class="bi bi-plus-circle me-1"></i>Nuevo
-            </button>
-            <div class="btn-group">
-                <button class="btn btn-info" @onclick="@(() => Navigation.NavigateTo("/ingreso-stock"))" title="Ingreso">
-                    <i class="bi bi-box-arrow-in-down"></i>
-                </button>
-                <button class="btn btn-danger" @onclick="@(() => Navigation.NavigateTo("/egreso-stock"))" title="Egreso">
-                    <i class="bi bi-box-arrow-up"></i>
-                </button>
-                <button class="btn btn-dark" @onclick="AbrirModalMovimientos" title="Movimientos">
-                    <i class="bi bi-clock-history"></i>
-                </button>
+    <div class="card mb-3 shadow-sm">
+        <div class="card-body row g-3">
+            <div class="col-md-3">
+                <label class="form-label">Buscar por</label>
+                <InputSelect class="form-select" @bind-Value="criterioBusqueda">
+                    <option value="">-- Seleccione --</option>
+                    <option value="nombre">Nombre</option>
+                    <option value="fabricante">Fabricante</option>
+                    <option value="unidad">Unidad</option>
+                </InputSelect>
+            </div>
+            <div class="col-md-5">
+                <label class="form-label">Valor</label>
+                <InputText class="form-control" @bind-Value="valorBusqueda" />
+            </div>
+            <div class="col-md-4 d-flex flex-wrap align-items-end gap-2 justify-content-md-end">
+                <div class="d-grid">
+                    <button class="btn btn-primary" @onclick="BuscarReactivos" title="Buscar">
+                        <i class="bi bi-search me-1"></i> Buscar
+                    </button>
+                </div>
+                @if (EsAdmin)
+                {
+                    <div class="d-grid">
+                        <button class="btn btn-success" @onclick="MostrarModalNuevo" title="Nuevo Reactivo">
+                            <i class="bi bi-plus-circle me-1"></i> Nuevo
+                        </button>
+                    </div>
+                }
+                <div class="btn-group">
+                    @if (EsAdmin)
+                    {
+                        <button class="btn btn-info" @onclick="@(() => Navigation.NavigateTo("/ingreso-stock"))" title="Ingreso de Stock">
+                            <i class="bi bi-box-arrow-in-down me-1"></i> Ingreso
+                        </button>
+                        <button class="btn btn-danger" @onclick="@(() => Navigation.NavigateTo("/egreso-stock"))" title="Egreso de Stock">
+                            <i class="bi bi-box-arrow-up me-1"></i> Egreso
+                        </button>
+                    }
+                    <button class="btn btn-dark" @onclick="AbrirModalMovimientos" title="Ver Movimientos">
+                        <i class="bi bi-clock-history me-1"></i> Movimientos
+                    </button>
+                </div>
             </div>
         </div>
     </div>
@@ -57,7 +83,35 @@
     <!-- Tabla -->
     @if (reactivosFiltrados?.Count > 0)
     {
-        <div class="table-responsive">
+
+        <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
+            <span>
+                Mostrando @((reactivosFiltrados.Count == 0) ? 0 : ((CurrentPage - 1) * PageSize + 1))
+                - @((CurrentPage - 1) * PageSize + PaginatedReactivos.Count()) de @reactivosFiltrados.Count reactivos
+            </span>
+
+            <div class="d-flex align-items-center gap-2">
+                <select class="form-select form-select-sm" style="width: auto;" @bind="PageSize">
+                    <option value="5">5</option>
+                    <option value="10">10</option>
+                    <option value="20">20</option>
+                    <option value="50">50</option>
+                    <option value="75">75</option>
+                </select>
+                <nav>
+                    <ul class="pagination pagination-sm mb-0">
+                        <li class="page-item">
+                            <button class="page-link" @onclick="() => CambiarPagina(-1)">«</button>
+                        </li>
+                        <li class="page-item">
+                            <button class="page-link" @onclick="() => CambiarPagina(1)">»</button>
+                        </li>
+                    </ul>
+                </nav>
+            </div>
+        </div>
+
+        <div class="table-responsive shadow-sm" style="max-height: 500px; min-height: 300px; overflow-y: auto;">
             <table class="table table-striped table-hover table-bordered align-middle text-center">
                 <thead class="table-light">
                     <tr>
@@ -70,7 +124,7 @@
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach (var r in reactivosFiltrados)
+                    @foreach (var r in PaginatedReactivos)
                     {
                         <tr>
                             <td class="text-start">@r.NombreReactivo</td>
@@ -81,18 +135,22 @@
                                 <span class="badge bg-@(r.Anulado.GetValueOrDefault() ? "danger" : "success")">
                                     @(r.Anulado.GetValueOrDefault() ? "Inactivo" : "Activo")
                                 </span>
-                                
+
                             </td>
                             <td class="text-center">
-                                <div class="d-flex justify-content-center gap-2">
-                                    <button class="btn btn-warning btn-sm shadow-sm" title="Editar" @onclick="() => MostrarModalEditar(r)">
-                                        <i class="bi bi-pencil-square text-dark"></i>
-                                    </button>
-                                    <button class="btn btn-danger btn-sm shadow-sm" title="Anular" @onclick="() => AnularReactivoAsync(r.IdReactivo)">
-                                        <span class="fw-bold text-white">X</span>
-                                    </button>
-                                </div>
+                                @if (EsAdmin)
+                                {
+                                    <div class="d-flex justify-content-center gap-2">
+                                        <button class="btn btn-warning btn-sm shadow-sm" title="Editar" @onclick="() => MostrarModalEditar(r)">
+                                            <i class="bi bi-pencil-square text-dark"></i>
+                                        </button>
+                                        <button class="btn btn-danger btn-sm shadow-sm" title="Anular" @onclick="() => AnularReactivoAsync(r.IdReactivo)">
+                                            <i class="bi bi-x-circle-fill"></i>
+                                        </button>
+                                    </div>
+                                }
                             </td>
+
 
                         </tr>
                     }
@@ -107,127 +165,128 @@
         </div>
     }
 
-@if (mostrarModalNuevo)
-{
-    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">@((modoEdicion ? "Editar" : "Nuevo") + " Reactivo")</h5>
-                    <button type="button" class="btn-close" @onclick="CerrarModalNuevo"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="mb-3">
-                        <label>Nombre</label>
-                        <InputText class="form-control text-uppercase" @bind-Value="nuevoReactivo.NombreReactivo" />
-                        @if (mostrarErrores && string.IsNullOrWhiteSpace(nuevoReactivo.NombreReactivo))
-                        {
-                            <div class="text-danger small">Campo obligatorio</div>
-                        }
+    @if (mostrarModalNuevo)
+    {
+        <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">@((modoEdicion ? "Editar" : "Nuevo") + " Reactivo")</h5>
+                        <button type="button" class="btn-close" @onclick="CerrarModalNuevo"></button>
                     </div>
-                    <div class="mb-3">
-                        <label>Fabricante</label>
-                        <InputText class="form-control text-uppercase" @bind-Value="nuevoReactivo.Fabricante" />
-                        @if (mostrarErrores && string.IsNullOrWhiteSpace(nuevoReactivo.Fabricante))
-                        {
-                            <div class="text-danger small">Campo obligatorio</div>
-                        }
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label>Nombre</label>
+                            <InputText class="form-control text-uppercase" @bind-Value="nuevoReactivo.NombreReactivo" />
+                            @if (mostrarErrores && string.IsNullOrWhiteSpace(nuevoReactivo.NombreReactivo))
+                            {
+                                <div class="text-danger small">Campo obligatorio</div>
+                            }
+                        </div>
+                        <div class="mb-3">
+                            <label>Fabricante</label>
+                            <InputText class="form-control text-uppercase" @bind-Value="nuevoReactivo.Fabricante" />
+                            @if (mostrarErrores && string.IsNullOrWhiteSpace(nuevoReactivo.Fabricante))
+                            {
+                                <div class="text-danger small">Campo obligatorio</div>
+                            }
+                        </div>
+                        <div class="mb-3">
+                            <label>Unidad</label>
+                            <InputText class="form-control" @bind-Value="nuevoReactivo.Unidad" />
+                            @if (mostrarErrores && string.IsNullOrWhiteSpace(nuevoReactivo.Unidad))
+                            {
+                                <div class="text-danger small">Campo obligatorio</div>
+                            }
+                        </div>
                     </div>
-                    <div class="mb-3">
-                        <label>Unidad</label>
-                        <InputText class="form-control" @bind-Value="nuevoReactivo.Unidad" />
-                        @if (mostrarErrores && string.IsNullOrWhiteSpace(nuevoReactivo.Unidad))
-                        {
-                            <div class="text-danger small">Campo obligatorio</div>
-                        }
+                    <div class="modal-footer">
+                        <button class="btn btn-primary" @onclick="GuardarReactivoAsync">Guardar</button>
+                        <button class="btn btn-secondary" @onclick="CerrarModalNuevo">Cancelar</button>
                     </div>
-                </div>
-                <div class="modal-footer">
-                    <button class="btn btn-primary" @onclick="GuardarReactivoAsync">Guardar</button>
-                    <button class="btn btn-secondary" @onclick="CerrarModalNuevo">Cancelar</button>
                 </div>
             </div>
         </div>
-    </div>
-}
+    }
 
-<!-- Modal Movimientos -->
-@if (mostrarModalMovimientos)
-{
-    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
-        <div class="modal-dialog modal-xl">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Movimientos de Reactivos</h5>
-                    <button class="btn-close" @onclick="CerrarModalMovimientos"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="row g-3 mb-3">
-                        <div class="col-md-3">
-                            <label>Desde</label>
-                            <InputDate class="form-control" @bind-Value="filtroDesde" />
-                        </div>
-                        <div class="col-md-3">
-                            <label>Hasta</label>
-                            <InputDate class="form-control" @bind-Value="filtroHasta" />
-                        </div>
-                        <div class="col-md-3">
-                            <label>Tipo</label>
-                            <InputSelect class="form-select" @bind-Value="filtroTipo">
-                                <option value="">Todos</option>
-                                <option value="INGRESO">INGRESO</option>
-                                <option value="EGRESO">EGRESO</option>
-                            </InputSelect>
-                        </div>
-                        <div class="col-md-3 d-flex align-items-end">
-                            <button class="btn btn-outline-primary w-100" @onclick="BuscarMovimientos">
-                                <i class="bi bi-funnel"></i> Filtrar
-                            </button>
-                        </div>
+    <!-- Modal Movimientos -->
+    @if (mostrarModalMovimientos)
+    {
+        <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+            <div class="modal-dialog modal-xl">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Movimientos de Reactivos</h5>
+                        <button class="btn-close" @onclick="CerrarModalMovimientos"></button>
                     </div>
+                    <div class="modal-body">
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-3">
+                                <label>Desde</label>
+                                <InputDate class="form-control" @bind-Value="filtroDesde" />
+                            </div>
+                            <div class="col-md-3">
+                                <label>Hasta</label>
+                                <InputDate class="form-control" @bind-Value="filtroHasta" />
+                            </div>
+                            <div class="col-md-3">
+                                <label>Tipo</label>
+                                <InputSelect class="form-select" @bind-Value="filtroTipo">
+                                    <option value="">Todos</option>
+                                    <option value="INGRESO">INGRESO</option>
+                                    <option value="EGRESO">EGRESO</option>
+                                </InputSelect>
+                            </div>
+                            <div class="col-md-3 d-flex align-items-end">
+                                <button class="btn btn-primary w-100" @onclick="BuscarMovimientos">
+                                    <i class="bi bi-funnel"></i> Filtrar
+                                </button>
+                            </div>
+                        </div>
 
-                    <div class="table-responsive">
-                        <table class="table table-hover table-bordered align-middle text-center">
+                        <div class="table-responsive">
+                            <table class="table table-hover table-bordered align-middle text-center">
 
-                            <thead class="table-light">
-                                <tr>
-                                    <th>Reactivo</th>
-                                    <th>Tipo</th>
-                                    <th>Cantidad</th>
-                                    <th>Fecha</th>
-                                    <th>N° Orden</th>
-                                    <th>Observación</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach (var m in movimientosGlobales)
-                                {
+                                <thead class="table-light">
                                     <tr>
-                                        <td>@m.Reactivo</td>
-                                        <td>@m.TipoMovimiento</td>
-                                        <td>@m.Cantidad.ToString("N2")</td>
-                                        <td>@m.FechaMovimiento.ToString("yyyy-MM-dd")</td>
-                                        <td>@m.NumeroOrden</td>
-                                        <td>@m.Observacion</td>
+                                        <th>Reactivo</th>
+                                        <th>Tipo</th>
+                                        <th>Cantidad</th>
+                                        <th>Fecha</th>
+                                        <th>N° Orden</th>
+                                        <th>Observación</th>
                                     </tr>
-                                }
-                            </tbody>
-                        </table>
-                    </div>
+                                </thead>
+                                <tbody>
+                                    @foreach (var m in movimientosGlobales)
+                                    {
+                                        <tr>
+                                            <td>@m.Reactivo</td>
+                                            <td>@m.TipoMovimiento</td>
+                                            <td>@m.Cantidad.ToString("N2")</td>
+                                            <td>@m.FechaMovimiento.ToString("yyyy-MM-dd")</td>
+                                            <td>@m.NumeroOrden</td>
+                                            <td>@m.Observacion</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
 
-                    @if (!movimientosGlobales.Any())
-                    {
-                        <div class="alert alert-warning mt-3">No hay movimientos para mostrar.</div>
-                    }
-                </div>
-                <div class="modal-footer">
-                    <button class="btn btn-secondary" @onclick="CerrarModalMovimientos">
-                        <i class="bi bi-x-lg"></i> Cerrar
-                    </button>
+                        @if (!movimientosGlobales.Any())
+                        {
+                            <div class="alert alert-warning mt-3">No hay movimientos para mostrar.</div>
+                        }
+                    </div>
+                    <div class="modal-footer">
+                        <button class="btn btn-secondary" @onclick="CerrarModalMovimientos">
+                            <i class="bi bi-x-lg"></i> Cerrar
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
-    </div>
+    }
 }
 
 
@@ -241,6 +300,14 @@
     private bool modoEdicion = false;
     private int? idReactivoEditando = null;
 
+    private ClaimsPrincipal? user;
+    private bool EsAdmin => user?.IsInRole("administrador") ?? false;
+    private bool EsLaboratorista => user?.IsInRole("laboratorista") ?? false;
+    private bool EsRecepcionista => user?.IsInRole("recepcionista") ?? false;
+    private bool showContent = false;
+    private bool isRendered = false;
+
+
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -248,13 +315,36 @@
         {
             datosCargados = true;
 
+            var authState = await AuthProvider.GetAuthenticationStateAsync();
+            user = authState.User;
+
+            if (!user.Identity?.IsAuthenticated ?? true)
+            {
+                // Redirección segura y retorno exacto post-login
+                var returnUrl = new Uri(Navigation.Uri).PathAndQuery;
+                Navigation.NavigateTo($"/login?returnUrl={Uri.EscapeDataString(returnUrl)}", true);
+                return;
+            }
+
+            // Solo admin y laboratorista pueden acceder:
+            if (!(EsAdmin || EsLaboratorista))
+            {
+                showContent = false;
+                StateHasChanged();
+                return;
+            }
+
+            showContent = true;
+
             var resultado = await ApiService.GetReactivosAsync();
             todosReactivos = resultado.ToList();
             reactivosFiltrados = todosReactivos;
 
+            isRendered = true;
             StateHasChanged();
         }
     }
+
 
     private void BuscarReactivos()
     {
@@ -416,5 +506,32 @@
 
         movimientosGlobales = resultado ?? new();
     }
+
+    // Paginación
+    private int _pageSize = 25;
+    private int PageSize
+    {
+        get => _pageSize;
+        set
+        {
+            if (_pageSize != value)
+            {
+                _pageSize = value;
+                CurrentPage = 1;
+            }
+        }
+    }
+
+    private int CurrentPage = 1;
+    private int TotalPages => (int)Math.Ceiling(reactivosFiltrados.Count / (double)PageSize);
+    private IEnumerable<ReactivoDto> PaginatedReactivos => reactivosFiltrados
+        .Skip((CurrentPage - 1) * PageSize)
+        .Take(PageSize);
+
+    private void CambiarPagina(int cambio)
+    {
+        CurrentPage = Math.Max(1, Math.Min(TotalPages, CurrentPage + cambio));
+    }
+
 
 }

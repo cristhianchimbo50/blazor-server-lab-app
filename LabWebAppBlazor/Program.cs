@@ -15,14 +15,16 @@ builder.Services.AddHttpClient("Api", client =>
 });
 
 builder.Services.AddScoped<ProtectedSessionStorage>();
-builder.Services.AddScoped<AuthenticationStateProvider, CustomAuthenticationStateProvider>();
 builder.Services.AddScoped<CustomAuthenticationStateProvider>();
-
+builder.Services.AddScoped<AuthenticationStateProvider>(provider => provider.GetRequiredService<CustomAuthenticationStateProvider>());
 
 
 builder.Services.AddAuthorizationCore();
 
 builder.Services.AddScoped<IApiService, ApiService>();
+
+
+
 
 var app = builder.Build();
 
@@ -35,7 +37,6 @@ if (!app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 app.UseStaticFiles();
 app.UseAntiforgery();
-
 
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();

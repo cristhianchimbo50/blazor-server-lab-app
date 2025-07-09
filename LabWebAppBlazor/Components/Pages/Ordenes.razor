@@ -1,5 +1,7 @@
 ﻿@page "/ordenes"
 @rendermode InteractiveServer
+<PageTitle>Gestión de Órdenes</PageTitle>
+
 @using LabWebAppBlazor.Models
 @using LabWebAppBlazor.Services
 @using Microsoft.AspNetCore.Components.Authorization
@@ -14,7 +16,10 @@
 
 @if (!isRendered)
 {
-    <div class="alert alert-info">Cargando interfaz...</div>
+    <div class="d-flex align-items-center text-primary">
+        <div class="spinner-border me-2" role="status"></div>
+        <strong>Cargando...</strong>
+    </div>
 }
 else if (!showContent)
 {
@@ -22,30 +27,36 @@ else if (!showContent)
 }
 else
 {
-    <div class="row mb-3">
-        <div class="col-md-3">
-            <label>Buscar por</label>
-            <InputSelect class="form-control" @bind-Value="criterioBusqueda">
-                <option value="">-- Seleccione --</option>
-                <option value="numero">Número de Orden</option>
-                <option value="cedula">Cédula</option>
-                <option value="nombre">Nombre</option>
-                <option value="estadoPago">Estado de Pago</option>
-            </InputSelect>
-        </div>
-        <div class="col-md-5">
-            <label>Valor</label>
-            <InputText class="form-control" @bind-Value="valorBusqueda" />
-        </div>
-        <div class="col-md-4 mt-4 d-flex gap-2">
-            <button class="btn btn-primary" @onclick="BuscarOrdenes" title="Buscar">
-                <i class="fas fa-search"></i>
-            </button>
-            <button class="btn btn-success" @onclick="IrAIngresarOrden">
-                <i class="fas fa-plus"></i>
-            </button>
+    <div class="card mb-3 shadow-sm">
+        <div class="card-body row g-3">
+            <div class="col-md-3">
+                <label class="form-label">Buscar por</label>
+                <InputSelect class="form-select" @bind-Value="criterioBusqueda">
+                    <option value="">-- Seleccione --</option>
+                    <option value="numero">Número de Orden</option>
+                    <option value="cedula">Cédula</option>
+                    <option value="nombre">Nombre</option>
+                    <option value="estadoPago">Estado de Pago</option>
+                </InputSelect>
+            </div>
+            <div class="col-md-5">
+                <label class="form-label">Valor</label>
+                <InputText class="form-control" @bind-Value="valorBusqueda" />
+            </div>
+            <div class="col-md-4 d-flex align-items-end gap-2 flex-wrap justify-content-md-end">
+                <button class="btn btn-primary" @onclick="BuscarOrdenes" title="Buscar">
+                    <i class="fas fa-search"></i>
+                </button>
+                @if (EsAdmin || EsRecepcionista)
+                {
+                    <button class="btn btn-success" @onclick="IrAIngresarOrden">
+                        <i class="fas fa-plus"></i>
+                    </button>
+                }
+            </div>
         </div>
     </div>
+
 
     @if (ordenes == null || ordenes.Count == 0)
     {
@@ -53,6 +64,34 @@ else
     }
     else
     {
+
+        <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
+            <span>
+                Mostrando @((ordenes.Count == 0) ? 0 : ((CurrentPage - 1) * PageSize + 1))
+                - @((CurrentPage - 1) * PageSize + PaginatedOrdenes.Count()) de @ordenes.Count órdenes
+            </span>
+
+            <div class="d-flex align-items-center gap-2">
+                <select class="form-select form-select-sm" style="width: auto;" @bind="PageSize">
+                    <option value="5">5</option>
+                    <option value="10">10</option>
+                    <option value="20">20</option>
+                    <option value="50">50</option>
+                    <option value="75">75</option>
+                </select>
+                <nav>
+                    <ul class="pagination pagination-sm mb-0">
+                        <li class="page-item">
+                            <button class="page-link" @onclick="() => CambiarPagina(-1)">«</button>
+                        </li>
+                        <li class="page-item">
+                            <button class="page-link" @onclick="() => CambiarPagina(1)">»</button>
+                        </li>
+                    </ul>
+                </nav>
+            </div>
+        </div>
+
         <div class="table-responsive">
             <table class="table table-bordered table-hover align-middle text-center">
                 <thead class="table-light">
@@ -70,7 +109,7 @@ else
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach (var orden in ordenes)
+                    @foreach (var orden in PaginatedOrdenes)
                     {
                         <tr>
                             <td>@orden.NumeroOrden</td>
@@ -200,28 +239,52 @@ else
                     @if (!DetalleActual.Anulado)
                     {
                         <div class="d-flex flex-wrap gap-2 justify-content-start mt-3">
-                            <button class="btn btn-success" @onclick="IrAIngresarResultados">
-                                <i class="fas fa-flask me-1"></i> Ingresar Resultados
-                            </button>
 
-                            <button class="btn btn-secondary" @onclick="MostrarTicketPreview">
+                            <button class="btn btn-secondary" @onclick="VisualizarTicketOrden">
                                 <i class="fas fa-receipt me-1"></i> Imprimir Orden
                             </button>
 
-                            <button class="btn btn-danger" @onclick="AnularOrden">
-                                <i class="fas fa-ban me-1"></i> Anular Orden
-                            </button>
+                            @if (EsAdmin || EsLaboratorista)
+                            {
+                                <button class="btn btn-success" @onclick="async () => await ConfirmarAccionConPago(IrAIngresarResultados)">
+                                    <i class="fas fa-flask me-1"></i> Ingresar Resultados
+                                </button>
+                            }
 
-                            <button class="btn btn-outline-primary" @onclick="VisualizarResultadoPDF">
+                            <button class="btn btn-primary" @onclick="async () => await ConfirmarAccionConPago(VisualizarResultadosMultiples)">
                                 <i class="fas fa-file-pdf me-1"></i> Imprimir Resultados
                             </button>
+
+                            @if (EsAdmin)
+                            {
+                                <button class="btn btn-danger" @onclick="AnularOrden">
+                                    <i class="fas fa-ban me-1"></i> Anular Orden
+                                </button>
+                            }
+
                         </div>
+
                     }
                 </div>
             </div>
         </div>
     </div>
 }
+
+<div class="modal fade" id="pdfModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">Resultados PDF</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body">
+                <iframe id="iframePdf" width="100%" height="600px"></iframe>
+            </div>
+        </div>
+    </div>
+</div>
+
 
 @code {
     private List<OrdenDto> ordenes = new();
@@ -236,6 +299,10 @@ else
     private OrdenDetalleDto? DetalleActual;
     private bool mostrarDetalleOrden = false;
 
+    private bool EsAdmin => user?.IsInRole("administrador") ?? false;
+    private bool EsRecepcionista => user?.IsInRole("recepcionista") ?? false;
+    private bool EsLaboratorista => user?.IsInRole("laboratorista") ?? false;
+
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender)
@@ -247,7 +314,17 @@ else
 
             if (!user.Identity?.IsAuthenticated ?? true)
             {
-                Navigation.NavigateTo("/login", true);
+                // Redirección segura con returnUrl (minúsculas)
+                var returnUrl = new Uri(Navigation.Uri).PathAndQuery;
+                Navigation.NavigateTo($"/login?returnUrl={Uri.EscapeDataString(returnUrl)}", true);
+                return;
+            }
+
+            // Solo admin, recepcionista o laboratorista pueden acceder
+            if (!(EsAdmin || EsRecepcionista || EsLaboratorista))
+            {
+                showContent = false;
+                StateHasChanged();
                 return;
             }
 
@@ -256,6 +333,38 @@ else
             StateHasChanged();
         }
     }
+
+    private async Task VisualizarTicketOrden()
+    {
+        if (DetalleActual is null)
+            return;
+
+        var pdfBytes = await ApiService.ObtenerTicketOrdenPdfAsync(DetalleActual.IdOrden);
+        if (pdfBytes.Length == 0)
+        {
+            await JS.InvokeVoidAsync("alert", "Error al generar el ticket.");
+            return;
+        }
+
+        var base64Pdf = Convert.ToBase64String(pdfBytes);
+        var pdfUrl = $"data:application/pdf;base64,{base64Pdf}";
+
+        await JS.InvokeVoidAsync("mostrarModalPdfDesdeBytes", pdfUrl);
+    }
+
+    private async Task ConfirmarAccionConPago(Func<Task> accion)
+    {
+        if (DetalleActual?.EstadoPago?.ToUpper() == "PENDIENTE")
+        {
+            bool continuar = await JS.InvokeAsync<bool>("confirm", "El estado de pago es PENDIENTE. ¿Desea continuar de todos modos?");
+            if (!continuar)
+                return;
+        }
+
+        await accion.Invoke();
+    }
+
+
 
     private async Task CargarOrdenes()
     {
@@ -394,4 +503,61 @@ else
 
         await JS.InvokeVoidAsync("imprimirResultados", resultadoObj);
     }
+
+    private async Task VisualizarResultadosMultiples()
+    {
+        if (DetalleActual is null)
+            return;
+
+        var idsResultados = DetalleActual.Examenes
+            .Where(e => e.IdResultado.HasValue)
+            .Select(e => e.IdResultado!.Value)
+            .Distinct()
+            .ToList();
+
+        if (!idsResultados.Any())
+        {
+            await JS.InvokeVoidAsync("alert", "No hay resultados para imprimir.");
+            return;
+        }
+
+        var pdfBytes = await ApiService.ObtenerResultadosPdfAsync(idsResultados);
+        if (pdfBytes.Length == 0)
+        {
+            await JS.InvokeVoidAsync("alert", "Error al generar el PDF.");
+            return;
+        }
+
+        var base64Pdf = Convert.ToBase64String(pdfBytes);
+        var pdfUrl = $"data:application/pdf;base64,{base64Pdf}";
+
+        await JS.InvokeVoidAsync("mostrarModalPdfDesdeBytes", pdfUrl);
+    }
+
+    private int _pageSize = 25;
+    private int PageSize
+    {
+        get => _pageSize;
+        set
+        {
+            if (_pageSize != value)
+            {
+                _pageSize = value;
+                CurrentPage = 1;
+            }
+        }
+    }
+
+    private int CurrentPage = 1;
+    private int TotalPages => (int)Math.Ceiling(ordenes.Count / (double)PageSize);
+    private IEnumerable<OrdenDto> PaginatedOrdenes => ordenes
+        .Skip((CurrentPage - 1) * PageSize)
+        .Take(PageSize);
+
+    private void CambiarPagina(int cambio)
+    {
+        CurrentPage = Math.Max(1, Math.Min(TotalPages, CurrentPage + cambio));
+    }
+
+
 }

@@ -1,5 +1,7 @@
 ﻿@page "/cuentasporcobrar"
 @rendermode InteractiveServer
+<PageTitle>Cuentas por Cobrar</PageTitle>
+
 @using LabWebAppBlazor.Models
 @using LabWebAppBlazor.Services
 @using Microsoft.AspNetCore.Components.Authorization
@@ -15,107 +17,186 @@
     Cuentas por Cobrar
 </h4>
 
-
-<div class="row mb-3">
-    <div class="col-md-3">
-        <label for="criterio">Buscar por</label>
-        <InputSelect id="criterio" class="form-control" @bind-Value="criterioBusqueda">
-            <option value="">-- Seleccione --</option>
-            <option value="numero">Número de Orden</option>
-            <option value="cedula">Cédula</option>
-            <option value="nombre">Nombre</option>
-        </InputSelect>
-    </div>
-    <div class="col-md-5">
-        <label for="valor">Valor</label>
-        <InputText id="valor" class="form-control" @bind-Value="valorBusqueda" />
-    </div>
-    <div class="col-md-4 mt-4 d-flex gap-2">
-        <button class="btn btn-primary" @onclick="BuscarOrdenes">Buscar</button>
-        <button class="btn btn-secondary" @onclick="LimpiarFiltro">Limpiar</button>
-    </div>
-</div>
-
-@if (ordenesFiltradas == null || ordenesFiltradas.Count == 0)
+@if (!showContent)
 {
-    <div class="alert alert-warning">No se encontraron órdenes con saldo pendiente.</div>
+    <div class="alert alert-danger text-center">
+        <i class="bi bi-shield-lock-fill me-2"></i> No autorizado para ver esta página.
+    </div>
 }
 else
 {
-    <div class="table-responsive">
-        <table class="table table-bordered table-hover table-striped">
-            <thead class="table-light">
-                <tr>
-                    <th>Número</th>
-                    <th>Cédula</th>
-                    <th>Paciente</th>
-                    <th>Total</th>
-                    <th>Pagado</th>
-                    <th>Saldo</th>
-                    <th>Acciones</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var orden in ordenesFiltradas)
-                {
-                    <tr>
-                        <td>@orden.NumeroOrden</td>
-                        <td>@orden.CedulaPaciente</td>
-                        <td>@orden.NombrePaciente</td>
-                        <td>@orden.Total.ToString("C")</td>
-                        <td>@orden.TotalPagado.ToString("C")</td>
-                        <td class="fw-bold text-danger">@orden.SaldoPendiente.ToString("C")</td>
-                        <td>
-                            <button class="btn btn-sm btn-success"
-                                    @onclick="@(() => IrACobro(orden.CedulaPaciente))">
-                                <i class="bi bi-cash-coin"></i> Cobrar
-                            </button>
-                        </td>
-                    </tr>
-                }
-            </tbody>
-
-        </table>
+    <div class="card mb-3 shadow-sm">
+        <div class="card-body row g-3">
+            <div class="col-md-3">
+                <label class="form-label">Buscar por</label>
+                <InputSelect class="form-select" @bind-Value="criterioBusqueda">
+                    <option value="">-- Seleccione --</option>
+                    <option value="numero">Número de Orden</option>
+                    <option value="cedula">Cédula</option>
+                    <option value="nombre">Nombre</option>
+                </InputSelect>
+            </div>
+            <div class="col-md-5">
+                <label class="form-label">Valor</label>
+                <InputText class="form-control" @bind-Value="valorBusqueda" />
+            </div>
+            <div class="col-md-4 d-flex align-items-end gap-2 flex-wrap justify-content-md-end">
+                <button class="btn btn-primary" @onclick="BuscarOrdenes">Buscar</button>
+            </div>
+        </div>
     </div>
+
+    @if (!ordenesFiltradas.Any())
+    {
+        <div class="alert alert-warning">No se encontraron órdenes con saldo pendiente.</div>
+    }
+    else
+    {
+        <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
+            <span>
+                Mostrando @((ordenesFiltradas.Count == 0) ? 0 : ((CurrentPage - 1) * PageSize + 1))
+                - @((CurrentPage - 1) * PageSize + PaginatedOrdenes.Count()) de @ordenesFiltradas.Count órdenes
+            </span>
+
+            <div class="d-flex align-items-center gap-2">
+                <select class="form-select form-select-sm" style="width: auto;" @bind="PageSize">
+                    <option value="5">5</option>
+                    <option value="10">10</option>
+                    <option value="20">20</option>
+                    <option value="50">50</option>
+                    <option value="75">75</option>
+                </select>
+                <nav>
+                    <ul class="pagination pagination-sm mb-0">
+                        <li class="page-item">
+                            <button class="page-link" @onclick="() => CambiarPagina(-1)">«</button>
+                        </li>
+                        <li class="page-item">
+                            <button class="page-link" @onclick="() => CambiarPagina(1)">»</button>
+                        </li>
+                    </ul>
+                </nav>
+            </div>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table table-bordered table-hover table-striped align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>Número</th>
+                        <th>Cédula</th>
+                        <th>Paciente</th>
+                        <th>Total</th>
+                        <th>Pagado</th>
+                        <th>Saldo</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var orden in PaginatedOrdenes)
+                    {
+                        <tr>
+                            <td>@orden.NumeroOrden</td>
+                            <td>@orden.CedulaPaciente</td>
+                            <td>@orden.NombrePaciente</td>
+                            <td>@orden.Total.ToString("C")</td>
+                            <td>@orden.TotalPagado.ToString("C")</td>
+                            <td class="fw-bold text-danger">@orden.SaldoPendiente.ToString("C")</td>
+                            <td>
+                                @if (EsAdmin || EsRecepcionista)
+                                {
+                                    <button class="btn btn-sm btn-success"
+                                            @onclick="@(() => IrACobro(orden.CedulaPaciente))">
+                                        <i class="bi bi-cash-coin"></i> Cobrar
+                                    </button>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
 }
 
 @code {
     private List<OrdenDto> todasOrdenes = new();
     private List<OrdenDto> ordenesFiltradas = new();
+
     private string criterioBusqueda = "";
     private string valorBusqueda = "";
-    private bool _cargado = false;
+
+    private bool showContent = false;
+    private bool cargado = false;
+    private ClaimsPrincipal? user;
+
+    private int _pageSize = 25;
+    private int PageSize
+    {
+        get => _pageSize;
+        set
+        {
+            if (_pageSize != value)
+            {
+                _pageSize = value;
+                CurrentPage = 1;
+            }
+        }
+    }
+
+    private int CurrentPage = 1;
+    private int TotalPages => (int)Math.Ceiling(ordenesFiltradas.Count / (double)PageSize);
+    private IEnumerable<OrdenDto> PaginatedOrdenes => ordenesFiltradas
+        .Skip((CurrentPage - 1) * PageSize)
+        .Take(PageSize);
+
+    private bool EsAdmin => user?.IsInRole("administrador") ?? false;
+    private bool EsRecepcionista => user?.IsInRole("recepcionista") ?? false;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (firstRender && !_cargado)
+        if (firstRender && !cargado)
         {
-            _cargado = true;
-            var todas = await ApiService.GetOrdenesAsync();
+            var auth = await AuthProvider.GetAuthenticationStateAsync();
+            user = auth.User;
 
+            showContent = EsAdmin || EsRecepcionista;
+
+            if (!showContent)
+            {
+                if (user == null || !(user.Identity?.IsAuthenticated ?? false))
+                {
+                    var url = Navigation.Uri;
+                    Navigation.NavigateTo($"/login?returnUrl={Uri.EscapeDataString(url)}", true);
+                    return;
+                }
+
+                StateHasChanged();
+                return;
+            }
+
+            cargado = true;
+            var todas = await ApiService.GetOrdenesAsync();
             todasOrdenes = todas
                 .Where(o => o.SaldoPendiente > 0)
                 .OrderByDescending(o => o.IdOrden)
                 .ToList();
 
             ordenesFiltradas = todasOrdenes;
-
             StateHasChanged();
         }
     }
-
-
 
     private void BuscarOrdenes()
     {
         if (string.IsNullOrWhiteSpace(criterioBusqueda) || string.IsNullOrWhiteSpace(valorBusqueda))
         {
             ordenesFiltradas = todasOrdenes;
+            CurrentPage = 1;
             return;
         }
 
         var valor = valorBusqueda.Trim().ToLower();
-
         ordenesFiltradas = criterioBusqueda switch
         {
             "numero" => todasOrdenes.Where(o => o.NumeroOrden?.ToLower().Contains(valor) ?? false).ToList(),
@@ -123,21 +204,18 @@ else
             "nombre" => todasOrdenes.Where(o => o.NombrePaciente?.ToLower().Contains(valor) ?? false).ToList(),
             _ => todasOrdenes
         };
+
+        CurrentPage = 1;
     }
 
-    private void LimpiarFiltro()
+    private void CambiarPagina(int cambio)
     {
-        criterioBusqueda = "";
-        valorBusqueda = "";
-        ordenesFiltradas = todasOrdenes;
+        CurrentPage = Math.Max(1, Math.Min(TotalPages, CurrentPage + cambio));
     }
 
     private void IrACobro(string? cedula)
     {
         if (!string.IsNullOrWhiteSpace(cedula))
-        {
             Navigation.NavigateTo($"/cobros/{cedula}");
-        }
     }
-
 }

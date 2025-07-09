@@ -106,6 +106,8 @@ namespace LabWebAppBlazor.Services
         Task<ConvenioDetalleDto?> GetConvenioDetalleAsync(int idConvenio);
         Task<HttpResponseMessage> AnularConvenioAsync(int idConvenio);
 
+        Task<byte[]> ObtenerResultadosPdfAsync(List<int> idsResultados);
 
+        Task<byte[]> ObtenerTicketOrdenPdfAsync(int idOrden);
     }
 }

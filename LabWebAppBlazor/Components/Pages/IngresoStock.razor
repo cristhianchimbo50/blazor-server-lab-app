@@ -1,5 +1,7 @@
 ﻿@page "/ingreso-stock"
 @rendermode InteractiveServer
+<PageTitle>Ingreso de Stock</PageTitle>
+
 @using LabWebAppBlazor.Models
 @using LabWebAppBlazor.Services
 @using Microsoft.AspNetCore.Components.Authorization
@@ -10,116 +12,135 @@
 @inject NavigationManager Navigation
 @inject IJSRuntime JS
 
+
 <h3 class="mb-4"><i class="bi bi-box-arrow-in-down me-2"></i>Ingreso de Stock</h3>
 
-<div class="card shadow-sm mb-4">
-    <div class="card-body">
-        <label class="form-label fw-semibold">Fecha de Ingreso</label>
-        <InputDate class="form-control" @bind-Value="fechaIngreso" />
+@if (!yaRenderizado)
+{
+    <div class="d-flex align-items-center text-primary">
+        <div class="spinner-border me-2" role="status"></div>
+        <strong>Cargando...</strong>
     </div>
-</div>
+}
+else if (!showContent)
+{
+    <div class="alert alert-danger text-center mt-5">
+        <i class="bi bi-exclamation-triangle me-2"></i>
+        No autorizado para acceder a esta sección.
+    </div>
+}
+else
+{
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <label class="form-label fw-semibold">Fecha de Ingreso</label>
+            <InputDate class="form-control" @bind-Value="fechaIngreso" />
+        </div>
+    </div>
 
-<div class="row g-4">
-    <div class="col-md-6">
-        <div class="card shadow-sm h-100">
-            <div class="card-header bg-light fw-semibold">
-                <i class="bi bi-clipboard-data me-2"></i> Reactivos Disponibles
+    <div class="row g-4">
+        <div class="col-md-6">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-light fw-semibold">
+                    <i class="bi bi-clipboard-data me-2"></i> Reactivos Disponibles
+                </div>
+                <div class="card-body p-2">
+                    <div class="table-responsive" style="max-height: 350px; overflow-y: auto;">
+                        <table class="table table-sm table-hover table-bordered align-middle">
+                            <thead class="table-light text-center">
+                                <tr>
+                                    <th>Nombre</th>
+                                    <th>Fabricante</th>
+                                    <th>Unidad</th>
+                                    <th class="text-end">Stock</th>
+                                    <th>Seleccionado</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var r in todosReactivos)
+                                {
+                                    var seleccionado = reactivosSeleccionados.Any(x => x.IdReactivo == r.IdReactivo);
+                                    <tr class="@(reactivosSeleccionados.Any(x => x.IdReactivo == r.IdReactivo) ? "table-primary" : "")">
+                                        <td>@r.NombreReactivo</td>
+                                        <td>@r.Fabricante</td>
+                                        <td>@r.Unidad</td>
+                                        <td class="text-end">@r.CantidadDisponible.ToString("N2")</td>
+                                        <td class="text-center">
+                                            <input type="checkbox"
+                                                   checked="@reactivosSeleccionados.Any(x => x.IdReactivo == r.IdReactivo)"
+                                                   @onchange="e => CambiarSeleccionReactivo(r, e.Value is bool b && b)" />
+                                        </td>
+                                    </tr>
+
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                    <small class="text-muted">* Marque los reactivos a ingresar.</small>
+
+                </div>
             </div>
-            <div class="card-body p-2">
-                <div class="table-responsive" style="max-height: 350px; overflow-y: auto;">
-                    <table class="table table-sm table-hover table-bordered align-middle">
+        </div>
+
+        <div class="col-md-6">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-light fw-semibold">
+                    <i class="bi bi-cart-plus me-2"></i> Reactivos Seleccionados para Ingreso
+                </div>
+                <div class="card-body p-2">
+                    <table class="table table-sm table-bordered align-middle">
                         <thead class="table-light text-center">
                             <tr>
-                                <th>Nombre</th>
-                                <th>Fabricante</th>
+                                <th>Reactivo</th>
+                                <th style="width: 30%;">Cantidad</th>
                                 <th>Unidad</th>
-                                <th class="text-end">Stock</th>
-                                <th>Seleccionado</th>
+                                <th></th>
                             </tr>
                         </thead>
                         <tbody>
-                            @foreach (var r in todosReactivos)
+                            @foreach (var r in reactivosSeleccionados)
                             {
-                                var seleccionado = reactivosSeleccionados.Any(x => x.IdReactivo == r.IdReactivo);
-                                <tr @ondblclick="() => SeleccionarReactivo(r)" class="@(seleccionado ? "table-primary" : "")">
+                                <tr>
                                     <td>@r.NombreReactivo</td>
-                                    <td>@r.Fabricante</td>
+                                    <td>
+                                        <InputNumber class="form-control form-control-sm text-end"
+                                                     @bind-Value="r.Cantidad"
+                                                     Min="0.01" Step="0.01" />
+                                    </td>
                                     <td>@r.Unidad</td>
-                                    <td class="text-end">@r.CantidadDisponible.ToString("N2")</td>
                                     <td class="text-center">
-                                        @if (seleccionado)
-                                        {
-                                            <span class="badge bg-primary">
-                                                <i class="bi bi-check-lg text-white"></i> Seleccionado
-                                            </span>
-                                        }
+                                        <button class="btn btn-sm btn-danger"
+                                                title="Quitar"
+                                                @onclick="() => QuitarReactivo(r.IdReactivo)">
+                                            <i class="bi bi-x-lg"></i>
+                                        </button>
                                     </td>
                                 </tr>
                             }
                         </tbody>
                     </table>
+
+                    @if (!reactivosSeleccionados.Any())
+                    {
+                        <div class="alert alert-info text-center mt-3">
+                            <i class="bi bi-info-circle me-2"></i> No hay reactivos seleccionados.
+                        </div>
+                    }
                 </div>
-                <small class="text-muted">* Doble clic para seleccionar.</small>
             </div>
         </div>
     </div>
 
-    <div class="col-md-6">
-        <div class="card shadow-sm h-100">
-            <div class="card-header bg-light fw-semibold">
-                <i class="bi bi-cart-plus me-2"></i> Reactivos Seleccionados para Ingreso
-            </div>
-            <div class="card-body p-2">
-                <table class="table table-sm table-bordered align-middle">
-                    <thead class="table-light text-center">
-                        <tr>
-                            <th>Reactivo</th>
-                            <th style="width: 30%;">Cantidad</th>
-                            <th>Unidad</th>
-                            <th></th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach (var r in reactivosSeleccionados)
-                        {
-                            <tr>
-                                <td>@r.NombreReactivo</td>
-                                <td>
-                                    <InputNumber class="form-control form-control-sm text-end"
-                                                 @bind-Value="r.Cantidad"
-                                                 Min="0.01" Step="0.01" />
-                                </td>
-                                <td>@r.Unidad</td>
-                                <td class="text-center">
-                                    <button class="btn btn-sm btn-outline-danger"
-                                            title="Quitar"
-                                            @onclick="() => QuitarReactivo(r.IdReactivo)">
-                                        <i class="bi bi-x-lg"></i>
-                                    </button>
-                                </td>
-                            </tr>
-                        }
-                    </tbody>
-                </table>
-
-                @if (!reactivosSeleccionados.Any())
-                {
-                    <div class="alert alert-info text-center mt-3">
-                        <i class="bi bi-info-circle me-2"></i> No hay reactivos seleccionados.
-                    </div>
-                }
-            </div>
-        </div>
+    <div class="mt-4 text-end">
+        <button class="btn btn-primary"
+                @onclick="GuardarMovimientosAsync"
+                disabled="@(!reactivosSeleccionados.Any())">
+            <i class="bi bi-save2 me-1"></i> Guardar Ingresos
+        </button>
     </div>
-</div>
 
-<div class="mt-4 text-end">
-    <button class="btn btn-primary"
-            @onclick="GuardarMovimientosAsync"
-            disabled="@(!reactivosSeleccionados.Any())">
-        <i class="bi bi-save2 me-1"></i> Guardar Ingresos
-    </button>
-</div>
+}
+
 
 @code {
     private List<ReactivoDto> todosReactivos = new();
@@ -127,16 +148,70 @@
     private DateTime fechaIngreso = DateTime.Now;
     private bool datosCargados = false;
 
+    private bool yaRenderizado = false;
+    private bool showContent = false;
+    private ClaimsPrincipal? usuario;
+    private bool disposed = false;
+    private bool EsAdmin => usuario?.IsInRole("administrador") == true;
+    private bool EsRecep => usuario?.IsInRole("recepcionista") == true;
+
+    public void Dispose()
+    {
+        disposed = true;
+    }
+
+
+
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (firstRender && !datosCargados)
+        if (firstRender && !disposed)
         {
-            datosCargados = true;
-            var lista = await ApiService.GetReactivosAsync();
-            todosReactivos = lista.OrderBy(r => r.NombreReactivo).ToList();
-            StateHasChanged();
+            yaRenderizado = true;
+
+            var authState = await AuthProvider.GetAuthenticationStateAsync();
+            usuario = authState.User;
+
+            if (!usuario.Identity?.IsAuthenticated ?? true)
+            {
+                var returnUrl = new Uri(Navigation.Uri).PathAndQuery;
+                Navigation.NavigateTo($"/login?returnUrl={Uri.EscapeDataString(returnUrl)}", true);
+                return;
+            }
+
+            showContent = EsAdmin || EsRecep;
+
+            if (showContent)
+            {
+                var lista = await ApiService.GetReactivosAsync();
+                todosReactivos = lista.OrderBy(r => r.NombreReactivo).ToList();
+            }
+
+            await InvokeAsync(StateHasChanged);
         }
     }
+
+    private void CambiarSeleccionReactivo(ReactivoDto reactivo, bool seleccionado)
+    {
+        if (seleccionado)
+        {
+            if (!reactivosSeleccionados.Any(r => r.IdReactivo == reactivo.IdReactivo))
+            {
+                reactivosSeleccionados.Add(new MovimientoReactivoDto
+                {
+                    IdReactivo = reactivo.IdReactivo,
+                    NombreReactivo = reactivo.NombreReactivo,
+                    Unidad = reactivo.Unidad,
+                    Cantidad = 0,
+                    FechaMovimiento = fechaIngreso
+                });
+            }
+        }
+        else
+        {
+            QuitarReactivo(reactivo.IdReactivo);
+        }
+    }
+
 
     private void SeleccionarReactivo(ReactivoDto reactivo)
     {

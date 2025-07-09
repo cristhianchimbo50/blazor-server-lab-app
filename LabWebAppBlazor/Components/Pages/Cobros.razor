@@ -1,5 +1,7 @@
 ﻿@page "/cobros/{cedula}"
 @rendermode InteractiveServer
+<PageTitle>Cobros de Pacientes</PageTitle>
+
 @using LabWebAppBlazor.Models
 @using LabWebAppBlazor.Services
 @using Microsoft.AspNetCore.Components.Authorization
@@ -12,6 +14,16 @@
 
 
 <h4 class="text-center mb-4 text-uppercase fw-bold border-bottom pb-2">Cobros de Pacientes</h4>
+
+@if (!(EsAdmin || EsRecepcionista))
+{
+    <div class="alert alert-danger text-center mt-4">
+        <i class="bi bi-shield-lock-fill me-2"></i>
+        No autorizado para ver esta página.
+    </div>
+    return;
+}
+
 
 @if (ordenesPorCobrar is null)
 {
@@ -140,9 +152,6 @@ else
         <button class="btn btn-success" @onclick="MostrarModalCobro" disabled="@(ordenesSeleccionadas.Count == 0)">
             <i class="bi bi-cash-coin me-1"></i> Cobrar
         </button>
-        <button class="btn btn-outline-secondary" @onclick="IrACuentasPorCobrar">
-            <i class="bi bi-arrow-return-left me-1"></i> Salir
-        </button>
     </div>
 }
 
@@ -208,11 +217,29 @@ else
 
     private bool datosCargados = false;
 
+    private ClaimsPrincipal? user;
+    private bool EsAdmin => user?.IsInRole("administrador") ?? false;
+    private bool EsRecepcionista => user?.IsInRole("recepcionista") ?? false;
+    private bool EsLaboratorista => user?.IsInRole("laboratorista") ?? false;
+
+
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender && !datosCargados)
         {
             datosCargados = true;
+
+            var auth = await AuthProvider.GetAuthenticationStateAsync();
+            user = auth.User;
+
+            // Solo administrador y recepcionista pueden acceder a cobros
+            if (!(EsAdmin || EsRecepcionista))
+            {
+                var urlActual = Navigation.Uri;
+                var urlLoginConReturn = $"/login?returnUrl={Uri.EscapeDataString(urlActual)}";
+                Navigation.NavigateTo(urlLoginConReturn, true);
+                return;
+            }
 
             var ordenes = await ApiService.GetOrdenesAsync();
 
@@ -230,6 +257,7 @@ else
             StateHasChanged();
         }
     }
+
 
 
     private async Task CargarPagosAsync()

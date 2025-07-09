@@ -1,6 +1,8 @@
 ﻿@page "/examenes-reactivos"
 @page "/examenes-reactivos/{idExamen:int?}"
 @rendermode InteractiveServer
+<PageTitle>Asociar Reactivos a Examen</PageTitle>
+
 @using LabWebAppBlazor.Models
 @using Microsoft.AspNetCore.WebUtilities
 @using LabWebAppBlazor.Services
@@ -12,7 +14,21 @@
 @inject NavigationManager Navigation
 @inject IJSRuntime JS
 
-
+@if (!isRendered)
+{
+    <div class="d-flex align-items-center text-primary">
+        <div class="spinner-border me-2" role="status"></div>
+        <strong>Cargando...</strong>
+    </div>
+}
+else if (!showContent)
+{
+    <div class="alert alert-danger mt-4 text-center">
+        <i class="fas fa-ban me-2"></i> No tiene permisos para gestionar asociaciones de reactivos a exámenes.
+    </div>
+}
+else
+{
     <h3 class="mb-4 d-flex align-items-center">
         <i class="fas fa-vials text-primary me-2 fs-4"></i> Asociar Reactivos a Examen
     </h3>
@@ -33,7 +49,35 @@
 
     @if (examenSeleccionado != null)
     {
-        <div class="table-responsive mb-3">
+        <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
+            <span>
+                Mostrando @((reactivosAsociados.Count == 0) ? 0 : ((CurrentPage - 1) * PageSize + 1))
+                - @((CurrentPage - 1) * PageSize + PaginatedReactivos.Count()) de @reactivosAsociados.Count reactivos
+            </span>
+
+            <div class="d-flex align-items-center gap-2">
+                <select class="form-select form-select-sm" style="width: auto;" @bind="PageSize">
+                    <option value="5">5</option>
+                    <option value="10">10</option>
+                    <option value="20">20</option>
+                    <option value="50">50</option>
+                    <option value="75">75</option>
+                </select>
+                <nav>
+                    <ul class="pagination pagination-sm mb-0">
+                        <li class="page-item @(CurrentPage == 1 ? "disabled" : "")">
+                            <button class="page-link" @onclick="() => CambiarPagina(-1)">«</button>
+                        </li>
+                        <li class="page-item @(CurrentPage == TotalPages ? "disabled" : "")">
+                            <button class="page-link" @onclick="() => CambiarPagina(1)">»</button>
+                        </li>
+
+                    </ul>
+                </nav>
+            </div>
+        </div>
+
+        <div class="table-responsive shadow-sm mb-3" style="max-height: 500px; min-height: 300px; overflow-y: auto;">
             <table class="table table-bordered table-hover align-middle text-center">
                 <thead class="table-light">
                     <tr>
@@ -44,7 +88,7 @@
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach (var item in reactivosAsociados)
+                    @foreach (var item in PaginatedReactivos)
                     {
                         <tr>
                             <td class="text-start">@item.NombreReactivo</td>
@@ -65,7 +109,7 @@
         </div>
 
         <div class="d-flex flex-wrap gap-2">
-            <button class="btn btn-outline-success" @onclick="MostrarModalReactivo">
+            <button class="btn btn-success" @onclick="MostrarModalReactivo">
                 <i class="fas fa-plus-circle me-1"></i> Agregar Reactivo
             </button>
             <button class="btn btn-primary" @onclick="GuardarAsociaciones">
@@ -73,6 +117,7 @@
             </button>
         </div>
     }
+}
 
 <!-- MODAL BUSCAR EXAMEN -->
 @if (mostrarModalExamen)
@@ -200,6 +245,10 @@
 
 
 @code {
+    private bool isRendered = false;
+    private bool showContent = false;
+    private ClaimsPrincipal? user;
+
     private ExamenDto? examenSeleccionado;
     private List<ReactivoAsociadoDto> reactivosAsociados = new();
 
@@ -279,6 +328,8 @@
             Unidad = r.Unidad,
             CantidadUsada = r.CantidadUsada
         }).ToList();
+
+        CurrentPage = 1;
     }
 
     private void SeleccionarReactivo(ReactivoDto reactivo)
@@ -325,35 +376,77 @@
         }
     }
 
-    private bool yaCargado = false;
-
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (firstRender && !yaCargado)
+        if (firstRender && !isRendered)
         {
-            yaCargado = true;
+            isRendered = true;
 
-            var uri = Navigation.ToAbsoluteUri(Navigation.Uri);
-            if (QueryHelpers.ParseQuery(uri.Query).TryGetValue("idExamen", out var idParam))
+            var authState = await AuthProvider.GetAuthenticationStateAsync();
+            user = authState.User;
+
+            if (!user.Identity?.IsAuthenticated ?? true)
             {
-                if (int.TryParse(idParam, out var id))
+                var returnUrl = new Uri(Navigation.Uri).PathAndQuery;
+                Navigation.NavigateTo($"/login?returnUrl={Uri.EscapeDataString(returnUrl)}", true);
+                return;
+            }
+
+            showContent = user.IsInRole("administrador");
+
+            if (showContent)
+            {
+                var uri = Navigation.ToAbsoluteUri(Navigation.Uri);
+                if (QueryHelpers.ParseQuery(uri.Query).TryGetValue("idExamen", out var idParam))
                 {
-                    var respuesta = await ApiService.ObtenerExamenConReactivosAsync(id);
-                    if (respuesta is not null)
+                    if (int.TryParse(idParam, out var id))
                     {
-                        examenSeleccionado = respuesta.Examen;
-                        reactivosAsociados = respuesta.Reactivos.Select(r => new ReactivoAsociadoDto
+                        var respuesta = await ApiService.ObtenerExamenConReactivosAsync(id);
+                        if (respuesta is not null)
                         {
-                            IdReactivo = r.IdReactivo,
-                            NombreReactivo = r.NombreReactivo,
-                            Unidad = r.Unidad,
-                            CantidadUsada = r.CantidadUsada
-                        }).ToList();
+                            examenSeleccionado = respuesta.Examen;
+                            reactivosAsociados = respuesta.Reactivos.Select(r => new ReactivoAsociadoDto
+                            {
+                                IdReactivo = r.IdReactivo,
+                                NombreReactivo = r.NombreReactivo,
+                                Unidad = r.Unidad,
+                                CantidadUsada = r.CantidadUsada
+                            }).ToList();
+                        }
                     }
                 }
             }
 
-            StateHasChanged(); // Forzar renderizado si cambió algo
+            StateHasChanged();
         }
+    }
+
+    // Paginación
+    private int _pageSize = 25;
+    private int PageSize
+    {
+        get => _pageSize;
+        set
+        {
+            if (_pageSize != value)
+            {
+                _pageSize = value;
+                CurrentPage = 1;
+                StateHasChanged();
+            }
+        }
+    }
+
+
+    private int CurrentPage = 1;
+    private int TotalPages => (int)Math.Ceiling(reactivosAsociados.Count / (double)PageSize);
+
+    private IEnumerable<ReactivoAsociadoDto> PaginatedReactivos => reactivosAsociados
+        .Skip((CurrentPage - 1) * PageSize)
+        .Take(PageSize);
+
+    private void CambiarPagina(int cambio)
+    {
+        CurrentPage = Math.Max(1, Math.Min(TotalPages, CurrentPage + cambio));
     }
 }

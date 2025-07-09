@@ -1,5 +1,7 @@
 ﻿@page "/convenios"
 @rendermode InteractiveServer
+<PageTitle>Gestión de Convenios</PageTitle>
+
 @using LabWebAppBlazor.Models
 @using LabWebAppBlazor.Services
 @using Microsoft.AspNetCore.Components.Authorization
@@ -14,12 +16,23 @@
     <i class="fas fa-handshake text-primary fs-4 me-2"></i>Gestión de Convenios
 </h3>
 
+@if (!showContent)
+{
+    <div class="alert alert-danger text-center shadow-sm">
+        <i class="bi bi-shield-lock-fill me-2"></i> No autorizado para ver esta página.
+    </div>
+    return;
+}
+
+
 
     @if (!isRendered)
     {
-        <div class="alert alert-info text-center shadow-sm">
-            <i class="bi bi-hourglass-split me-2"></i> Cargando interfaz...
-        </div>
+    <div class="d-flex align-items-center text-primary">
+        <div class="spinner-border me-2" role="status"></div>
+        <strong>Cargando...</strong>
+    </div>
+
     }
     else if (!showContent)
     {
@@ -57,11 +70,13 @@
                         <i class="bi bi-search"></i>
                     </button>
                 </div>
-                <div class="col-12 text-end mt-2">
-                    <button class="btn btn-success" @onclick="IrAIngresoConvenio">
-                        <i class="bi bi-plus-circle me-1"></i> Registrar Convenio
-                    </button>
-                </div>
+            @if (EsAdmin || EsRecepcionista)
+            {
+                <button class="btn btn-success" @onclick="IrAIngresoConvenio">
+                    <i class="bi bi-plus-circle me-1"></i> Registrar Convenio
+                </button>
+            }
+
             </div>
         </div>
 
@@ -74,7 +89,35 @@
         }
         else
         {
-            <div class="table-responsive shadow-sm">
+        <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
+            <span>
+                Mostrando @((convenios.Count == 0) ? 0 : ((CurrentPage - 1) * PageSize + 1))
+                - @((CurrentPage - 1) * PageSize + PaginatedConvenios.Count()) de @convenios.Count convenios
+            </span>
+
+            <div class="d-flex align-items-center gap-2">
+                <select class="form-select form-select-sm" style="width: auto;" @bind="PageSize">
+                    <option value="5">5</option>
+                    <option value="10">10</option>
+                    <option value="20">20</option>
+                    <option value="50">50</option>
+                    <option value="75">75</option>
+                </select>
+                <nav>
+                    <ul class="pagination pagination-sm mb-0">
+                        <li class="page-item @(CurrentPage == 1 ? "disabled" : "")">
+                            <button class="page-link" @onclick="() => CambiarPagina(-1)">«</button>
+                        </li>
+                        <li class="page-item @(CurrentPage == TotalPages ? "disabled" : "")">
+                            <button class="page-link" @onclick="() => CambiarPagina(1)">»</button>
+                        </li>
+                    </ul>
+                </nav>
+            </div>
+        </div>
+
+
+        <div class="table-responsive shadow-sm" style="max-height: 500px; min-height: 300px; overflow-y: auto;">
                 <table class="table table-hover table-bordered text-center align-middle">
                     <thead class="table-light">
                         <tr>
@@ -89,7 +132,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach (var c in convenios)
+                        @foreach (var c in PaginatedConvenios)
                         {
                             var totalMedico = Math.Round((c.MontoTotal * c.PorcentajeComision / 100), 2);
                             <tr>
@@ -106,19 +149,25 @@
                                 </td>
                                 <td class="text-center">
                                     <div class="d-flex justify-content-center gap-2">
+                                    @if (EsAdmin)
+                                    {
                                         <button class="btn btn-sm shadow-sm text-white" title="Ver Detalles"
                                                 style="background-color: #007bff; border-color: #007bff; border-radius: 0.5rem;"
-                                                @onclick="() => VerConvenio(c.IdConvenio)">
+                                                @onclick="async () => await VerConvenio(c.IdConvenio)">
                                             <i class="bi bi-eye-fill"></i>
                                         </button>
-                                        @if (!c.Anulado)
-                                        {
-                                            <button class="btn btn-danger btn-sm shadow-sm" title="Anular Convenio"
-                                                    style="border-radius: 0.5rem;"
-                                                    @onclick="() => AnularConvenio(c.IdConvenio)">
-                                                <span class="fw-bold text-white">X</span>
-                                            </button>
-                                        }
+                                    }
+
+
+                                    @if (!c.Anulado && EsAdmin)
+                                    {
+                                        <button class="btn btn-danger btn-sm shadow-sm" title="Anular Convenio"
+                                                style="border-radius: 0.5rem;"
+                                                @onclick="() => AnularConvenio(c.IdConvenio)">
+                                            <i class="bi bi-x-circle-fill"></i>
+                                        </button>
+                                    }
+
                                     </div>
                                 </td>
                             </tr>
@@ -202,23 +251,35 @@
     private bool isRendered = false, showContent = false;
     private bool mostrarModal = false;
 
+    private ClaimsPrincipal? user;
+    private bool EsAdmin => user?.IsInRole("administrador") ?? false;
+    private bool EsRecepcionista => user?.IsInRole("recepcionista") ?? false;
+    private bool EsLaboratorista => user?.IsInRole("laboratorista") ?? false;
+
+
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender)
         {
             var auth = await AuthProvider.GetAuthenticationStateAsync();
-            if (!auth.User.Identity?.IsAuthenticated ?? true)
+            user = auth.User;
+
+            // Solo admin y recepcionista pueden ver convenios
+            showContent = EsAdmin || EsRecepcionista;
+
+            if (!user.Identity?.IsAuthenticated ?? true)
             {
-                Navigation.NavigateTo("/login", true);
+                // Redirección al login con returnUrl
+                Navigation.NavigateTo($"/login?returnUrl={Uri.EscapeDataString(Navigation.Uri)}", true);
                 return;
             }
 
             isRendered = true;
-            showContent = true;
             await CargarConvenios();
             StateHasChanged();
         }
     }
+
 
     private async Task CargarConvenios()
     {
@@ -227,6 +288,7 @@
 
     private async Task FiltrarConvenios()
     {
+        CurrentPage = 1;
         var todos = await ApiService.GetConveniosAsync();
         var filtrados = todos.AsEnumerable();
 
@@ -254,8 +316,10 @@
     private async Task VerConvenio(int id)
     {
         convenioDetalle = await ApiService.GetConvenioDetalleAsync(id);
+        Console.WriteLine($"Detalle recibido: {convenioDetalle?.NombreMedico}");
         mostrarModal = true;
     }
+
 
     private void CerrarModal()
     {
@@ -283,4 +347,31 @@
     {
         Navigation.NavigateTo("/ingreso_convenio");
     }
+
+    private int _pageSize = 25;
+    private int PageSize
+    {
+        get => _pageSize;
+        set
+        {
+            if (_pageSize != value)
+            {
+                _pageSize = value;
+                CurrentPage = 1;
+                StateHasChanged();
+            }
+        }
+    }
+
+    private int CurrentPage = 1;
+    private int TotalPages => (int)Math.Ceiling(convenios.Count / (double)PageSize);
+    private IEnumerable<ConvenioDto> PaginatedConvenios => convenios
+        .Skip((CurrentPage - 1) * PageSize)
+        .Take(PageSize);
+
+    private void CambiarPagina(int cambio)
+    {
+        CurrentPage = Math.Max(1, Math.Min(TotalPages, CurrentPage + cambio));
+    }
+
 }

@@ -1,5 +1,7 @@
 ﻿@page "/examenes"
 @rendermode InteractiveServer
+<PageTitle>Gestión de Exámenes</PageTitle>
+
 @using LabWebAppBlazor.Models
 @using LabWebAppBlazor.Services
 @using Microsoft.AspNetCore.Components.Authorization
@@ -16,9 +18,11 @@
 
     @if (!isRendered)
     {
-        <div class="alert alert-info text-center">
-            <i class="bi bi-hourglass-split me-2"></i> Cargando interfaz...
-        </div>
+    <div class="d-flex align-items-center text-primary">
+        <div class="spinner-border me-2" role="status"></div>
+        <strong>Cargando...</strong>
+    </div>
+
     }
     else if (!showContent)
     {
@@ -34,24 +38,28 @@
                     <label class="form-label">Buscar por</label>
                     <InputSelect class="form-select" @bind-Value="criterioBusqueda">
                         <option value="">-- Seleccione --</option>
-                        ...
+                        <option value="nombre">Nombre</option>
+                        <option value="estudio">Estudio</option>
+                        <option value="tecnica">Técnica</option>
+                        <option value="tipo">Tipo Examen</option>
                     </InputSelect>
                 </div>
                 <div class="col-md-5 col-sm-6">
                     <label class="form-label">Valor</label>
                     <InputText class="form-control" @bind-Value="valorBusqueda" />
                 </div>
-                <div class="col-md-3 col-12 d-flex align-items-end gap-2 flex-wrap">
-                    <button class="btn btn-primary" @onclick="BuscarExamenes" title="Buscar">
-                        <i class="bi bi-search"></i>
-                    </button>
+            <div class="col-md-3 col-12 d-flex align-items-end gap-2 flex-wrap">
+                <button class="btn btn-primary" @onclick="BuscarExamenes" title="Buscar">
+                    <i class="bi bi-search"></i>
+                </button>
+                @if (EsAdmin)
+                {
                     <button class="btn btn-success" @onclick="AbrirModalNuevoExamen" title="Registrar Nuevo Examen">
                         <i class="bi bi-plus-circle"></i>
                     </button>
-                    <button class="btn btn-info text-white" @onclick="IrAVinculoReactivos" title="Vincular Reactivos">
-                        <i class="bi bi-beaker me-1"></i> Reactivos
-                    </button>
-                </div>
+                }
+            </div>
+
             </div>
         </div>
 
@@ -65,7 +73,35 @@
             }
             else
             {
-                <div class="table-responsive shadow-sm">
+
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <span>
+                    Mostrando @((ListaExamenes.Count == 0) ? 0 : ((CurrentPage - 1) * PageSize + 1))
+                    - @((CurrentPage - 1) * PageSize + PaginatedExamenes.Count()) de @ListaExamenes.Count
+                </span>
+
+                <div class="d-flex align-items-center gap-2">
+                    <select class="form-select form-select-sm" style="width: auto;" @bind="PageSize">
+                    <option value="5">5</option>
+                    <option value="10">10</option>
+                    <option value="20">20</option>
+                    <option value="50">50</option>
+                    <option value="75">75</option>
+                    </select>
+                    <nav>
+                        <ul class="pagination pagination-sm mb-0">
+                            <li class="page-item @(CurrentPage == 1 ? "disabled" : "")">
+                                <button class="page-link" @onclick="() => CambiarPagina(CurrentPage - 1)">«</button>
+                            </li>
+                            <li class="page-item @(CurrentPage == TotalPages ? "disabled" : "")">
+                                <button class="page-link" @onclick="() => CambiarPagina(CurrentPage + 1)">»</button>
+                            </li>
+                        </ul>
+                    </nav>
+                </div>
+            </div>
+
+            <div class="table-responsive shadow-sm" style="max-height: 500px; min-height: 300px; overflow-y: auto;">
                     <table class="table table-hover table-bordered align-middle text-center">
 
                         <thead class="table-light">
@@ -79,7 +115,7 @@
                             </tr>
                         </thead>
                         <tbody>
-                            @foreach (var examen in ListaExamenes)
+                            @foreach (var examen in PaginatedExamenes)
                             {
                                 <tr>
                                     <td class="text-start">@examen.NombreExamen</td>
@@ -87,21 +123,24 @@
                                     <td>@examen.TipoExamen</td>
                                     <td>@examen.Tecnica</td>
                                     <td>@(examen.Precio?.ToString("C") ?? "-")</td>
-                                    <td class="text-center">
-                                        <div class="d-flex justify-content-center gap-2">
-                                            <button class="btn btn-warning btn-sm shadow-sm" title="Editar" @onclick="() => EditarExamen(examen.IdExamen)">
-                                                <i class="bi bi-pencil-square text-dark"></i>
-                                            </button>
-                                            <button class="btn btn-danger btn-sm shadow-sm" title="Anular" @onclick="() => AnularExamen(examen.IdExamen)">
-                                                <span class="fw-bold text-white">X</span>
-                                            </button>
-                                        </div>
+                                    <td>
+                                        @if (EsAdmin)
+                                        {
+                                            <div class="d-flex justify-content-center gap-2">
+                                                <button class="btn btn-warning btn-sm shadow-sm" title="Editar" @onclick="() => EditarExamen(examen.IdExamen)">
+                                                    <i class="bi bi-pencil-square text-dark"></i>
+                                                </button>
+                                                <button class="btn btn-danger btn-sm shadow-sm" title="Anular" @onclick="() => AnularExamen(examen.IdExamen)">
+                                                    <i class="bi bi-x-circle-fill"></i>
+                                                </button>
+                                            </div>
+                                        }
                                     </td>
-
-
                                 </tr>
                             }
                         </tbody>
+                       
+
                     </table>
                 </div>
 
@@ -180,7 +219,7 @@
                                                 <td>@hijo.NombreExamen</td>
                                                 <td>@hijo.Estudio</td>
                                                 <td>
-                                                    <button class="btn btn-sm btn-outline-danger" @onclick="() => QuitarHijo(hijo.IdExamen)">
+                                                    <button class="btn btn-sm btn-danger" @onclick="() => QuitarHijo(hijo.IdExamen)">
                                                         <i class="fas fa-times"></i>
                                                     </button>
                                                 </td>
@@ -265,14 +304,44 @@
     private string valorBusquedaHijo = "";
     private List<ExamenDto> ResultadosBusquedaHijos = new();
 
+    private ClaimsPrincipal? user;
+    private bool EsAdmin => user?.IsInRole("administrador") ?? false;
+    private bool EsRecepcionista => user?.IsInRole("recepcionista") ?? false;
+    private bool EsLaboratorista => user?.IsInRole("laboratorista") ?? false;
+
+    private int _pageSize = 25;
+    private int PageSize
+    {
+        get => _pageSize;
+        set
+        {
+            if (_pageSize != value)
+            {
+                _pageSize = value;
+                CurrentPage = 1;
+            }
+        }
+    }
+
+    private int CurrentPage = 1;
+    private int TotalPages => (int)Math.Ceiling(ListaExamenes.Count / (double)PageSize);
+    private IEnumerable<ExamenDto> PaginatedExamenes => ListaExamenes
+        .Skip((CurrentPage - 1) * PageSize)
+        .Take(PageSize);
+
+
+
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender)
         {
             var auth = await AuthProvider.GetAuthenticationStateAsync();
-            if (!auth.User.Identity?.IsAuthenticated ?? true)
+            user = auth.User;
+
+            if (!user.Identity?.IsAuthenticated ?? true)
             {
-                Navigation.NavigateTo("/login", true);
+                // Redirección al login con returnUrl
+                Navigation.NavigateTo($"/login?returnUrl={Uri.EscapeDataString(Navigation.Uri)}", true);
                 return;
             }
 
@@ -283,30 +352,37 @@
         }
     }
 
+
     private async Task CargarExamenes()
     {
         ListaExamenes = (await ApiService.GetExamenesAsync()).ToList();
+        CurrentPage = 1;
     }
 
     private async Task BuscarExamenes()
     {
         var todos = await ApiService.GetExamenesAsync();
+
         if (string.IsNullOrWhiteSpace(criterioBusqueda) || string.IsNullOrWhiteSpace(valorBusqueda))
         {
             ListaExamenes = todos.ToList();
-            return;
+        }
+        else
+        {
+            var val = valorBusqueda.ToLower();
+            ListaExamenes = criterioBusqueda switch
+            {
+                "nombre" => todos.Where(e => e.NombreExamen.ToLower().Contains(val)).ToList(),
+                "estudio" => todos.Where(e => e.Estudio?.ToLower().Contains(val) ?? false).ToList(),
+                "tecnica" => todos.Where(e => e.Tecnica?.ToLower().Contains(val) ?? false).ToList(),
+                "tipo" => todos.Where(e => e.TipoExamen?.ToLower().Contains(val) ?? false).ToList(),
+                _ => todos.ToList()
+            };
         }
 
-        var val = valorBusqueda.ToLower();
-        ListaExamenes = criterioBusqueda switch
-        {
-            "nombre" => todos.Where(e => e.NombreExamen.ToLower().Contains(val)).ToList(),
-            "estudio" => todos.Where(e => e.Estudio?.ToLower().Contains(val) ?? false).ToList(),
-            "tecnica" => todos.Where(e => e.Tecnica?.ToLower().Contains(val) ?? false).ToList(),
-            "tipo" => todos.Where(e => e.TipoExamen?.ToLower().Contains(val) ?? false).ToList(),
-            _ => todos.ToList()
-        };
+        CurrentPage = 1; // Mueve esta línea fuera del if
     }
+
 
     private void AbrirModalNuevoExamen()
     {
@@ -413,6 +489,24 @@
     private void IrAVinculoReactivos()
     {
         Navigation.NavigateTo("/examenes-reactivos");
+    }
+
+    private void CambiarPagina(int pagina)
+    {
+        if (pagina < 1 || pagina > TotalPages)
+            return;
+
+        CurrentPage = pagina;
+        StateHasChanged();
+    }
+
+
+    private void CambioTamañoPagina(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out int size))
+            PageSize = size;
+
+        CurrentPage = 1;
     }
 
 }

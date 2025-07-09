@@ -695,33 +695,66 @@ namespace LabWebAppBlazor.Services
 
         public async Task<List<ExamenDto>> FiltrarExamenesAsync(string criterio, string valor)
         {
-            var response = await _http.GetAsync($"api/Examenes/filtrar?{criterio}={valor}");
-            if (response.IsSuccessStatusCode)
-                return await response.Content.ReadFromJsonAsync<List<ExamenDto>>() ?? new();
-            return new();
+            var request = new HttpRequestMessage(HttpMethod.Get, $"api/Examenes/filtrar?{criterio}={Uri.EscapeDataString(valor)}");
+
+            if (!await AttachTokenAsync(request))
+                return new List<ExamenDto>();
+
+            var response = await _http.SendAsync(request);
+
+            if (!response.IsSuccessStatusCode)
+                return new List<ExamenDto>();
+
+            return await response.Content.ReadFromJsonAsync<List<ExamenDto>>() ?? new();
         }
+
 
         public async Task<List<ReactivoDto>> FiltrarReactivosAsync(string criterio, string valor)
         {
-            var response = await _http.GetAsync($"api/Reactivos/filtrar?{criterio}={valor}");
-            if (response.IsSuccessStatusCode)
-                return await response.Content.ReadFromJsonAsync<List<ReactivoDto>>() ?? new();
-            return new();
+            var request = new HttpRequestMessage(HttpMethod.Get, $"api/Reactivos/filtrar?{criterio}={Uri.EscapeDataString(valor)}");
+
+            if (!await AttachTokenAsync(request))
+                return new List<ReactivoDto>();
+
+            var response = await _http.SendAsync(request);
+
+            if (!response.IsSuccessStatusCode)
+                return new List<ReactivoDto>();
+
+            return await response.Content.ReadFromJsonAsync<List<ReactivoDto>>() ?? new();
         }
+
 
         public async Task<IEnumerable<AsociacionReactivoDto>> ObtenerTodasLasAsociacionesAsync()
         {
-            return await _http.GetFromJsonAsync<List<AsociacionReactivoDto>>("reactivos/asociaciones")
-                   ?? new List<AsociacionReactivoDto>();
+            var request = new HttpRequestMessage(HttpMethod.Get, "reactivos/asociaciones");
+
+            if (!await AttachTokenAsync(request))
+                return Enumerable.Empty<AsociacionReactivoDto>();
+
+            var response = await _http.SendAsync(request);
+            if (!response.IsSuccessStatusCode)
+                return Enumerable.Empty<AsociacionReactivoDto>();
+
+            return await response.Content.ReadFromJsonAsync<IEnumerable<AsociacionReactivoDto>>() ?? [];
         }
+
 
         public async Task<ExamenDto?> ObtenerExamenPorIdAsync(int id)
         {
-            var response = await _http.GetAsync($"examenes/{id}");
-            if (response.IsSuccessStatusCode)
-                return await response.Content.ReadFromJsonAsync<ExamenDto>();
-            return null;
+            var request = new HttpRequestMessage(HttpMethod.Get, $"examenes/{id}");
+
+            if (!await AttachTokenAsync(request))
+                return null;
+
+            var response = await _http.SendAsync(request);
+
+            if (!response.IsSuccessStatusCode)
+                return null;
+
+            return await response.Content.ReadFromJsonAsync<ExamenDto>();
         }
+
 
         public async Task<ExamenConReactivosDto?> ObtenerExamenConReactivosAsync(int id)
         {
@@ -762,16 +795,35 @@ namespace LabWebAppBlazor.Services
             if (queryParams.Any())
                 url += "?" + string.Join("&", queryParams);
 
-            return await _http.GetFromJsonAsync<List<MovimientoReactivoView>>(url) ?? new();
+            var request = new HttpRequestMessage(HttpMethod.Get, url);
+
+            if (!await AttachTokenAsync(request))
+                return new List<MovimientoReactivoView>();
+
+            var response = await _http.SendAsync(request);
+
+            if (!response.IsSuccessStatusCode)
+                return new List<MovimientoReactivoView>();
+
+            return await response.Content.ReadFromJsonAsync<List<MovimientoReactivoView>>() ?? new();
         }
+
 
         public async Task<T?> GetAsync<T>(string endpoint)
         {
-            var response = await _http.GetAsync(endpoint);
-            if (response.IsSuccessStatusCode)
-                return await response.Content.ReadFromJsonAsync<T>();
-            return default;
+            var request = new HttpRequestMessage(HttpMethod.Get, endpoint);
+
+            if (!await AttachTokenAsync(request))
+                return default;
+
+            var response = await _http.SendAsync(request);
+
+            if (!response.IsSuccessStatusCode)
+                return default;
+
+            return await response.Content.ReadFromJsonAsync<T>();
         }
+
 
         public async Task<int> ObtenerIdUsuarioActualAsync(IJSRuntime js)
         {
@@ -799,19 +851,77 @@ namespace LabWebAppBlazor.Services
 
         public async Task<List<ConvenioDto>> GetConveniosAsync()
         {
-            return await _http.GetFromJsonAsync<List<ConvenioDto>>("convenios") ?? new();
+            var request = new HttpRequestMessage(HttpMethod.Get, "convenios");
+
+            if (!await AttachTokenAsync(request))
+                return new List<ConvenioDto>();
+
+            var response = await _http.SendAsync(request);
+
+            if (!response.IsSuccessStatusCode)
+                return new List<ConvenioDto>();
+
+            return await response.Content.ReadFromJsonAsync<List<ConvenioDto>>() ?? new List<ConvenioDto>();
         }
 
         public async Task<ConvenioDetalleDto?> GetConvenioDetalleAsync(int idConvenio)
         {
-            return await _http.GetFromJsonAsync<ConvenioDetalleDto>($"convenios/{idConvenio}");
+            var request = new HttpRequestMessage(HttpMethod.Get, $"convenios/{idConvenio}");
+
+            if (!await AttachTokenAsync(request))
+                return null;
+
+            var response = await _http.SendAsync(request);
+
+            if (!response.IsSuccessStatusCode)
+                return null;
+
+            return await response.Content.ReadFromJsonAsync<ConvenioDetalleDto>();
         }
 
         public async Task<HttpResponseMessage> AnularConvenioAsync(int idConvenio)
         {
-            return await _http.DeleteAsync($"convenios/{idConvenio}");
+            var request = new HttpRequestMessage(HttpMethod.Delete, $"convenios/{idConvenio}");
+
+            if (!await AttachTokenAsync(request))
+                return new HttpResponseMessage(System.Net.HttpStatusCode.Unauthorized);
+
+            return await _http.SendAsync(request);
         }
 
+        public async Task<byte[]> ObtenerResultadosPdfAsync(List<int> ids)
+        {
+            var request = new HttpRequestMessage(HttpMethod.Post, "resultados/pdf-multiple")
+            {
+                Content = JsonContent.Create(ids)
+            };
+
+            if (!await AttachTokenAsync(request))
+                return Array.Empty<byte>();
+
+            var response = await _http.SendAsync(request);
+
+            if (!response.IsSuccessStatusCode)
+                return Array.Empty<byte>();
+
+            return await response.Content.ReadAsByteArrayAsync();
+        }
+
+        public async Task<byte[]> ObtenerTicketOrdenPdfAsync(int idOrden)
+        {
+            var request = new HttpRequestMessage(HttpMethod.Get, $"ordenes/{idOrden}/ticket-pdf");
+
+            if (!await AttachTokenAsync(request))
+                return Array.Empty<byte>();
+
+            var response = await _http.SendAsync(request);
+
+            if (!response.IsSuccessStatusCode)
+                return Array.Empty<byte>();
+
+            return await response.Content.ReadAsByteArrayAsync();
+        }
 
     }
+
 }
